@@ -1,5 +1,12 @@
-import { redirect } from "next/navigation";
+import AuthShell from "@/components/auth/AuthShell";
+import { requireVerifiedCsr } from "@/lib/csr/guard";
 
-export default function Home() {
-  redirect("/login");
+export default async function Home() {
+  const csr = await requireVerifiedCsr();
+
+  return (
+    <AuthShell title={`Hello, ${csr.name}`} description="Your email is verified. The customer service tools will live here.">
+      <span />
+    </AuthShell>
+  );
 }

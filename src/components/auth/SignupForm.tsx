@@ -49,8 +49,8 @@ export default function SignupForm({ token }: { token: string }) {
             ? "Your account is ready. Check your email to verify it."
             : "Your account is ready, but the verification email could not be sent."}
         </Alert>
-        <Button component={NextLink} href="/login" variant="outlined" fullWidth>
-          Continue to sign in
+        <Button component={NextLink} href="/verify-email" variant="outlined" fullWidth>
+          Continue
         </Button>
       </Stack>
     );

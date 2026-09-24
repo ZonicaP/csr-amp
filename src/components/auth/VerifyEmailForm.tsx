@@ -43,8 +43,8 @@ export default function VerifyEmailForm({ token }: { token: string }) {
     return (
       <Stack spacing={2}>
         <Alert severity="success">Your email is verified.</Alert>
-        <Button component={NextLink} href="/login" variant="contained" fullWidth>
-          Continue to sign in
+        <Button component={NextLink} href="/" variant="contained" fullWidth>
+          Continue
         </Button>
       </Stack>
     );

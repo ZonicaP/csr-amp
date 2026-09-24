@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import NextLink from "next/link";
 import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
@@ -14,19 +15,17 @@ import { useFormRequest } from "@/hooks/useFormRequest";
 export default function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [signedIn, setSignedIn] = useState(false);
+  const router = useRouter();
   const { error, pending, run } = useFormRequest();
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const result = await run(() => postJson("/api/auth/session", { email, password }));
-    if (result) {
-      setSignedIn(true);
+    const result = await run(() => postJson<{ csr: { emailVerified: boolean } }>("/api/auth/session", { email, password }));
+    if (!result) {
+      return;
     }
-  }
-
-  if (signedIn) {
-    return <Alert severity="success">You’re signed in.</Alert>;
+    router.replace(result.csr.emailVerified ? "/" : "/verify-email");
+    router.refresh();
   }
 
   return (

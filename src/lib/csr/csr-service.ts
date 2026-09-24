@@ -28,6 +28,7 @@ export function toPublicCsr(csr: CsrWithRoles) {
     email: csr.email,
     displayName: csr.displayName,
     status: csr.status,
+    emailVerified: Boolean(csr.emailVerifiedAt),
     roles: roleNames(csr),
   };
 }
@@ -133,6 +134,27 @@ export async function verifyEmail(token: string) {
     where: { id: csr.id },
     data: { emailVerifiedAt: new Date(), emailVerificationTokenHash: null },
   });
+}
+
+const RESEND_WINDOW_MS = 60 * 1000;
+
+export async function resendVerification(actorId: string) {
+  const csr = await prisma.csr.findUnique({ where: { id: actorId }, include: csrInclude });
+  if (!csr || csr.status !== CsrStatus.ACTIVE) {
+    throw new CsrError("UNAUTHENTICATED", "Sign in as an active CSR");
+  }
+  if (csr.emailVerifiedAt) {
+    throw new CsrError("INVALID", "This email is already verified");
+  }
+  if (csr.emailVerificationTokenHash && Date.now() - csr.updatedAt.getTime() < RESEND_WINDOW_MS) {
+    throw new CsrError("INVALID", "Please wait a minute before requesting another email");
+  }
+  const token = createInviteToken();
+  await prisma.csr.update({
+    where: { id: csr.id },
+    data: { emailVerificationTokenHash: hashInviteToken(token) },
+  });
+  return { token, email: csr.email, name: csr.name };
 }
 
 export async function loginCsr(email: string, password: string) {
