@@ -9,7 +9,16 @@ export default function AppShell({ name, children }: { name: string | null; chil
       {name ? <Navbar name={name} /> : null}
       <Box sx={{ flex: 1, display: "flex", minHeight: 0 }}>
         {name ? <Sidebar name={name} /> : null}
-        <Box component="section" sx={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+        <Box
+          component="section"
+          sx={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            minWidth: 0,
+            pb: name ? { xs: "calc(56px + env(safe-area-inset-bottom))", md: 0 } : 0,
+          }}
+        >
           {children}
         </Box>
       </Box>
