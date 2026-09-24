@@ -13,7 +13,7 @@ async function customerFor(membershipId: string) {
       firstName: true,
       membershipId: true,
       status: true,
-      vehicles: { orderBy: { createdAt: "asc" }, select: { id: true, licensePlate: true, subscriptions: { select: { id: true, status: true } } } },
+      vehicles: { orderBy: { createdAt: "asc" }, select: { id: true, licensePlate: true, subscriptions: { select: { id: true, status: true, planName: true } } } },
       purchases: { orderBy: { purchasedAt: "desc" }, select: { id: true, description: true, amount: true, failureReason: true, purchasedAt: true } },
     },
   });
@@ -21,21 +21,41 @@ async function customerFor(membershipId: string) {
   return customer;
 }
 
-export async function runAccountAction(actorId: string, membershipId: string, action: SuggestedAction) {
+export async function runAccountAction(actorId: string, membershipId: string, action: SuggestedAction, reason = "") {
   const actor = await currentCsr(actorId);
   const customer = await customerFor(membershipId);
   const mail = createEmailService();
   const to = actor.email;
 
   if (action.type === "cancel-membership") {
+    const cancellationReason = reason.trim();
+    if (!cancellationReason) throw new CsrError("INVALID", "Add a reason for the cancellation");
     if (!hasPermission(actor.roles, "subscriptions:cancel")) throw new CsrError("FORBIDDEN", "You do not have permission for this action");
     if (customer.status === "CANCELLED") throw new CsrError("CONFLICT", "This membership is already cancelled");
+    const plans = customer.vehicles.flatMap((vehicle) => vehicle.subscriptions.map((plan) => plan.planName));
     await prisma.$transaction([
       prisma.subscription.updateMany({ where: { vehicle: { userId: customer.id }, status: "ACTIVE" }, data: { status: "CANCELLED" } }),
       prisma.user.update({ where: { id: customer.id }, data: { status: "CANCELLED" } }),
-      prisma.customerEvent.create({ data: { userId: customer.id, type: "PLAN_CANCELLED", summary: "Membership cancelled by CSR.", createdAt: new Date() } }),
+      prisma.customerEvent.create({
+        data: { userId: customer.id, type: "PLAN_CANCELLED", summary: `Membership cancelled by CSR. ${cancellationReason}`, createdAt: new Date() },
+      }),
       prisma.customerEvent.create({ data: { userId: customer.id, type: "ACCOUNT_CANCELLED", summary: "Account cancelled by CSR.", createdAt: new Date(Date.now() + 1000) } }),
     ]);
+    await mail.send(
+      to,
+      new NoticeEmail(
+        appUrl(),
+        `Membership ${customer.membershipId} cancelled`,
+        "Membership cancelled",
+        [
+          `Hi ${customer.firstName}, membership ${customer.membershipId} has been cancelled.`,
+          plans.length > 0 ? `Plan: ${plans.join(", ")}.` : "No active plan was on this membership.",
+          `Reason: ${cancellationReason}`,
+          "Washes on this membership will no longer start.",
+        ],
+        "This confirmation is delivered to the signed-in CSR for this project.",
+      ),
+    );
     return;
   }
 

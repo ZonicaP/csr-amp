@@ -20,9 +20,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ mem
     const session = await readSession();
     if (!session) return NextResponse.json({ error: "Sign in as an active CSR" }, { status: 401 });
     const { membershipId } = await params;
-    const action = actionFrom((await request.json()) as Record<string, unknown>);
+    const body = (await request.json()) as Record<string, unknown>;
+    const action = actionFrom(body);
+    const reason = typeof body.reason === "string" ? body.reason.trim() : "";
     if (!action || action.type === "email-payment-link") return NextResponse.json({ error: "That action is not available" }, { status: 400 });
-    await runAccountAction(session.csrId, membershipId, action);
+    if (action.type === "cancel-membership" && (reason.length === 0 || reason.length > 200)) {
+      return NextResponse.json({ error: "Add a reason for the cancellation" }, { status: 400 });
+    }
+    await runAccountAction(session.csrId, membershipId, action, reason);
     return NextResponse.json({ ok: true });
   } catch (error) {
     if (error instanceof EmailDeliveryError) return NextResponse.json({ error: error.message }, { status: 502 });
