@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
@@ -17,7 +17,7 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { AuthRequestError } from "@/lib/auth/http-client";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
-import type { UserListItem } from "@/lib/users/user-list";
+import { phoneDigits, searchTokens, type UserListItem } from "@/lib/users/user-list";
 
 type UsersResponse = {
   users: UserListItem[];
@@ -36,18 +36,69 @@ function StatusChip({ status }: { status: UserListItem["status"] }) {
   return <Chip size="small" label={status.charAt(0) + status.slice(1).toLowerCase()} color={statusColor[status]} />;
 }
 
+function HighlightPhone({ phone, query }: { phone: string; query: string }) {
+  const tokens = searchTokens(query)
+    .map(phoneDigits)
+    .filter((digits) => digits.length > 0)
+    .sort((left, right) => right.length - left.length);
+  const matched = new Set<number>();
+  const digits = phoneDigits(phone);
+  for (const token of tokens) {
+    let from = 0;
+    while (from <= digits.length - token.length) {
+      const at = digits.indexOf(token, from);
+      if (at < 0) break;
+      for (let index = at; index < at + token.length; index += 1) matched.add(index);
+      from = at + 1;
+    }
+  }
+  if (matched.size === 0) return phone;
+
+  const parts: ReactNode[] = [];
+  let plain = "";
+  let marked = "";
+  let digitIndex = 0;
+  const flush = () => {
+    if (plain) parts.push(plain);
+    if (marked) {
+      parts.push(
+        <Box key={parts.length} component="mark" sx={{ color: "#0B75E1", backgroundColor: "transparent", fontWeight: 700 }}>
+          {marked}
+        </Box>,
+      );
+    }
+    plain = "";
+    marked = "";
+  };
+  for (const character of phone) {
+    if (/\d/.test(character) && matched.has(digitIndex)) {
+      if (plain) flush();
+      marked += character;
+      digitIndex += 1;
+    } else {
+      if (marked) flush();
+      plain += character;
+      if (/\d/.test(character)) digitIndex += 1;
+    }
+  }
+  flush();
+  return parts;
+}
+
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function HighlightMatch({ text, query }: { text: string; query: string }) {
-  const term = query.trim();
-  if (!term) {
+  const tokens = searchTokens(query).sort((left, right) => right.length - left.length);
+  if (tokens.length === 0) {
     return text;
   }
-  const parts = text.split(new RegExp(`(${escapeRegExp(term)})`, "ig"));
+  const pattern = tokens.map(escapeRegExp).join("|");
+  const parts = text.split(new RegExp(`(${pattern})`, "ig"));
+  const terms = new Set(tokens.map((token) => token.toLowerCase()));
   return parts.map((part, index) =>
-    part.toLowerCase() === term.toLowerCase() ? (
+    terms.has(part.toLowerCase()) ? (
       <Box key={index} component="mark" sx={{ color: "#0B75E1", backgroundColor: "transparent", fontWeight: 700 }}>
         {part}
       </Box>
@@ -107,7 +158,7 @@ export default function UsersTable() {
     <Stack spacing={2}>
       <TextField
         label="Search"
-        placeholder="Name, email, or phone"
+        placeholder="Name, email, phone, or membership ID"
         value={query}
         onChange={(event) => setQuery(event.target.value)}
         fullWidth
@@ -120,6 +171,7 @@ export default function UsersTable() {
             <TableHead>
               <TableRow>
                 <TableCell>Name</TableCell>
+                <TableCell>Membership ID</TableCell>
                 <TableCell>Email</TableCell>
                 <TableCell>Phone</TableCell>
                 <TableCell>Status</TableCell>
@@ -132,9 +184,12 @@ export default function UsersTable() {
                     <HighlightMatch text={user.firstName} query={debounced} /> <HighlightMatch text={user.lastName} query={debounced} />
                   </TableCell>
                   <TableCell>
+                    <HighlightMatch text={user.membershipId} query={debounced} />
+                  </TableCell>
+                  <TableCell>
                     <HighlightMatch text={user.email} query={debounced} />
                   </TableCell>
-                  <TableCell>{user.phone ? <HighlightMatch text={user.phone} query={debounced} /> : "—"}</TableCell>
+                  <TableCell>{user.phone ? <HighlightPhone phone={user.phone} query={debounced} /> : "—"}</TableCell>
                   <TableCell>
                     <StatusChip status={user.status} />
                   </TableCell>
@@ -142,7 +197,7 @@ export default function UsersTable() {
               ))}
               {!pending && users.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4}>No customers match that search.</TableCell>
+                  <TableCell colSpan={5}>No customers match that search.</TableCell>
                 </TableRow>
               ) : null}
             </TableBody>
@@ -158,11 +213,14 @@ export default function UsersTable() {
               </Typography>
               <StatusChip status={user.status} />
             </Stack>
+            <Typography sx={{ mt: 0.5, color: "#003264", fontWeight: 600 }}>
+              <HighlightMatch text={user.membershipId} query={debounced} />
+            </Typography>
             <Typography sx={{ mt: 0.5 }}>
               <HighlightMatch text={user.email} query={debounced} />
             </Typography>
             <Typography variant="body2">
-              {user.phone ? <HighlightMatch text={user.phone} query={debounced} /> : "No phone"}
+              {user.phone ? <HighlightPhone phone={user.phone} query={debounced} /> : "No phone"}
             </Typography>
           </Paper>
         ))}
