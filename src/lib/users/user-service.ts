@@ -134,10 +134,13 @@ const customerSelect = {
   },
 };
 
-export async function getCustomer(actorId: string, id: string) {
+export async function getCustomer(actorId: string, membershipId: string) {
   const actor = await currentCsr(actorId);
   if (!hasPermission(actor.roles, "customers:read")) {
     throw new CsrError("FORBIDDEN", "You do not have permission for this action");
   }
-  return prisma.user.findUnique({ where: { id }, select: customerSelect });
+  return prisma.user.findFirst({
+    where: { membershipId: { equals: membershipId, mode: "insensitive" } },
+    select: customerSelect,
+  });
 }
