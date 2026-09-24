@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { CustomerEventType, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { currentCsr, CsrError } from "@/lib/csr/csr-service";
 import { hasPermission } from "@/lib/csr/permissions";
@@ -128,7 +128,7 @@ const customerSelect = {
     select: { id: true, description: true, amount: true, failureReason: true, purchasedAt: true },
   },
   events: {
-    where: { type: { notIn: ["PAYMENT_RECEIVED", "PAYMENT_FAILED"] } },
+    where: { type: { notIn: [CustomerEventType.PAYMENT_RECEIVED, CustomerEventType.PAYMENT_FAILED] } },
     orderBy: { createdAt: "desc" as const },
     take: 10,
     select: { id: true, type: true, summary: true, createdAt: true },
