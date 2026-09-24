@@ -8,6 +8,7 @@ export type CustomersPage = {
   page: number;
   pageSize: number;
   total: number;
+  approximate?: boolean;
 };
 
 const MAX_CACHED_PAGES = 8;
