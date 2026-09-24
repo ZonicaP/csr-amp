@@ -7,14 +7,14 @@ import Button from "@mui/material/Button";
 import Link from "@mui/material/Link";
 import Stack from "@mui/material/Stack";
 import PasswordField from "@/components/auth/PasswordField";
-import { AuthRequestError, putJson } from "@/lib/auth/http-client";
+import { putJson } from "@/lib/auth/http-client";
+import { useFormRequest } from "@/hooks/useFormRequest";
 
 export default function ResetPasswordForm({ token }: { token: string }) {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [error, setError] = useState("");
   const [done, setDone] = useState(false);
-  const [pending, setPending] = useState(false);
+  const { error, setError, pending, run } = useFormRequest();
 
   if (!token) {
     return (
@@ -29,19 +29,13 @@ export default function ResetPasswordForm({ token }: { token: string }) {
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError("");
     if (password !== confirm) {
       setError("Passwords do not match");
       return;
     }
-    setPending(true);
-    try {
-      await putJson("/api/auth/password-reset", { token, password });
+    const result = await run(() => putJson("/api/auth/password-reset", { token, password }));
+    if (result) {
       setDone(true);
-    } catch (caught) {
-      setError(caught instanceof AuthRequestError ? caught.message : "Something went wrong");
-    } finally {
-      setPending(false);
     }
   }
 

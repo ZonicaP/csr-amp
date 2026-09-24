@@ -58,6 +58,15 @@ const theme = createTheme({
         input: { fontSize: 16, padding: "14px 16px" },
       },
     },
+    MuiInputLabel: {
+      styleOverrides: {
+        outlined: {
+          "&:not(.MuiInputLabel-shrink)": {
+            transform: "translate(16px, 14px) scale(1)",
+          },
+        },
+      },
+    },
     MuiFormLabel: {
       styleOverrides: { root: { color: body } },
     },

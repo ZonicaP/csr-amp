@@ -102,4 +102,17 @@ Then:
 npm run db:seed
 ```
 
-Sign in with `POST /api/auth/session` using that email and password. Invite another CSR with `POST /api/csrs`. The response includes a one-time invite token. The invited person activates the account with `POST /api/invites/accept`.
+Sign in with `POST /api/auth/session` using that email and password. Invite another CSR with `POST /api/csrs`. That sends an invite email with a link to create the account. After the account is created, a verification email is sent. Password resets send a link by email.
+
+To send those emails, add an SMTP mailbox to `.env`:
+
+```bash
+APP_URL="http://localhost:3000"
+SMTP_HOST="smtp.example.com"
+SMTP_PORT="587"
+SMTP_USER="mailer@example.com"
+SMTP_PASSWORD="replace-with-the-mailbox-password"
+EMAIL_FROM="AMP CSR <mailer@example.com>"
+```
+
+Local and production both deliver to the address on the CSR account. Without these values, the app reports that email is not configured and does not pretend the message was sent.

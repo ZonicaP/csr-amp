@@ -7,14 +7,15 @@ import Button from "@mui/material/Button";
 import Link from "@mui/material/Link";
 import Stack from "@mui/material/Stack";
 import PasswordField from "@/components/auth/PasswordField";
-import { AuthRequestError, postJson } from "@/lib/auth/http-client";
+import { postJson } from "@/lib/auth/http-client";
+import { useFormRequest } from "@/hooks/useFormRequest";
 
 export default function SignupForm({ token }: { token: string }) {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [error, setError] = useState("");
   const [done, setDone] = useState(false);
-  const [pending, setPending] = useState(false);
+  const [emailSent, setEmailSent] = useState(true);
+  const { error, setError, pending, run } = useFormRequest();
 
   if (!token) {
     return (
@@ -29,26 +30,25 @@ export default function SignupForm({ token }: { token: string }) {
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError("");
     if (password !== confirm) {
       setError("Passwords do not match");
       return;
     }
-    setPending(true);
-    try {
-      await postJson("/api/invites/accept", { token, password });
+    const result = await run(() => postJson<{ emailSent: boolean }>("/api/invites/accept", { token, password }));
+    if (result) {
+      setEmailSent(result.emailSent);
       setDone(true);
-    } catch (caught) {
-      setError(caught instanceof AuthRequestError ? caught.message : "Something went wrong");
-    } finally {
-      setPending(false);
     }
   }
 
   if (done) {
     return (
       <Stack spacing={2}>
-        <Alert severity="success">Your account is ready.</Alert>
+        <Alert severity={emailSent ? "success" : "warning"}>
+          {emailSent
+            ? "Your account is ready. Check your email to verify it."
+            : "Your account is ready, but the verification email could not be sent."}
+        </Alert>
         <Button component={NextLink} href="/login" variant="outlined" fullWidth>
           Continue to sign in
         </Button>

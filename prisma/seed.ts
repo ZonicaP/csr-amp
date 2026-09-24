@@ -28,6 +28,7 @@ async function main() {
       displayName: `${name} ${surname}`,
       status: CsrStatus.ACTIVE,
       passwordHash: hashPassword(password),
+      emailVerifiedAt: new Date(),
       roles: { create: [{ role: CsrRoleName.ADMIN }] },
     },
   });

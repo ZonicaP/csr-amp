@@ -94,6 +94,10 @@ export async function inviteCsr(
   return { csr: toPublicCsr(csr), inviteToken: token };
 }
 
+export async function deleteUnactivatedInvite(id: string) {
+  await prisma.csr.deleteMany({ where: { id, status: CsrStatus.INVITED } });
+}
+
 export async function acceptInvite(token: string, password: string) {
   if (password.length < 8) {
     throw new CsrError("INVALID", "Password must be at least 8 characters");
@@ -105,16 +109,30 @@ export async function acceptInvite(token: string, password: string) {
   if (!csr || csr.status !== CsrStatus.INVITED) {
     throw new CsrError("NOT_FOUND", "Invite is no longer valid");
   }
+  const verificationToken = createInviteToken();
   const updated = await prisma.csr.update({
     where: { id: csr.id },
     data: {
       status: CsrStatus.ACTIVE,
       passwordHash: hashPassword(password),
       inviteTokenHash: null,
+      emailVerifiedAt: null,
+      emailVerificationTokenHash: hashInviteToken(verificationToken),
     },
     include: csrInclude,
   });
-  return toPublicCsr(updated);
+  return { csr: toPublicCsr(updated), verificationToken };
+}
+
+export async function verifyEmail(token: string) {
+  const csr = await prisma.csr.findUnique({ where: { emailVerificationTokenHash: hashInviteToken(token) } });
+  if (!csr || csr.status !== CsrStatus.ACTIVE) {
+    throw new CsrError("NOT_FOUND", "This verification link is no longer valid");
+  }
+  await prisma.csr.update({
+    where: { id: csr.id },
+    data: { emailVerifiedAt: new Date(), emailVerificationTokenHash: null },
+  });
 }
 
 export async function loginCsr(email: string, password: string) {
@@ -181,7 +199,7 @@ const RESET_WINDOW_MS = 60 * 60 * 1000;
 export async function requestPasswordReset(email: string) {
   const csr = await prisma.csr.findUnique({ where: { email } });
   if (!csr || csr.status !== CsrStatus.ACTIVE) {
-    return { token: null as string | null };
+    return { token: null, name: null };
   }
   const token = createInviteToken();
   await prisma.csr.update({
@@ -191,7 +209,14 @@ export async function requestPasswordReset(email: string) {
       passwordResetExpiresAt: new Date(Date.now() + RESET_WINDOW_MS),
     },
   });
-  return { token };
+  return { token, name: csr.name };
+}
+
+export async function clearPasswordReset(email: string) {
+  await prisma.csr.updateMany({
+    where: { email },
+    data: { passwordResetTokenHash: null, passwordResetExpiresAt: null },
+  });
 }
 
 export async function resetPassword(token: string, password: string) {
