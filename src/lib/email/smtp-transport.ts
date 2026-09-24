@@ -1,5 +1,5 @@
 import path from "node:path";
-import nodemailer from "nodemailer";
+import nodemailer, { type Transporter } from "nodemailer";
 import type { RenderedEmail } from "./email.ts";
 
 const logoPath = path.join(process.cwd(), "public", "amp-logo-hires.png");
@@ -13,10 +13,10 @@ export interface EmailTransport {
 }
 
 export class SmtpEmailTransport implements EmailTransport {
-  private readonly transporter: nodemailer.Transporter;
+  private readonly transporter: Transporter;
   private readonly from: string;
 
-  constructor(transporter: nodemailer.Transporter, from: string) {
+  constructor(transporter: Transporter, from: string) {
     this.transporter = transporter;
     this.from = from;
   }
