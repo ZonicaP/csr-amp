@@ -84,6 +84,11 @@ export default async function CustomerPage({ params }: { params: Promise<{ membe
                       <Typography sx={{ color: "#717680", fontSize: 14 }}>
                         {plan ? `Since ${date.format(plan.startedAt)}` : "No membership on this vehicle."}
                       </Typography>
+                      {plan && customer.status !== "CANCELLED" ? (
+                        <Typography sx={{ color: customer.status === "OVERDUE" ? "#FFA100" : "#11B76B", fontSize: 13, fontWeight: 600 }}>
+                          {customer.status === "OVERDUE" ? "Payment outstanding" : "Up to date"}
+                        </Typography>
+                      ) : null}
                     </Box>
                     <Box sx={{ flexShrink: 0, textAlign: "right" }}>
                       <Stack spacing={0.5} sx={{ alignItems: "flex-end" }}>
@@ -106,11 +111,16 @@ export default async function CustomerPage({ params }: { params: Promise<{ membe
           <Stack spacing={1}>
             {customer.purchases.length === 0 ? <Typography>No purchases on this account.</Typography> : null}
             {customer.purchases.map((purchase) => (
-              <Paper key={purchase.id} elevation={0} sx={{ px: 2, py: 1.5, border: "1px solid #E5E7EB", borderRadius: 3 }}>
-                <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1 }}>
+              <Paper key={purchase.id} elevation={0} sx={{ px: 2, py: 1.25, border: "1px solid #E5E7EB", borderRadius: 3 }}>
+                <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1, alignItems: "flex-start" }}>
                   <Box sx={{ minWidth: 0 }}>
-                    <Typography sx={{ fontWeight: 600 }}>{purchase.description}</Typography>
-                    <Typography sx={{ color: "#717680", fontSize: 14 }}>{date.format(purchase.purchasedAt)}</Typography>
+                    <Stack direction="row" sx={{ gap: 1, alignItems: "baseline", flexWrap: "wrap" }}>
+                      <Typography sx={{ fontWeight: 600 }}>{purchase.description}</Typography>
+                      <Typography sx={{ color: "#717680", fontSize: 14 }}>{date.format(purchase.purchasedAt)}</Typography>
+                    </Stack>
+                    {purchase.failureReason ? (
+                      <Typography sx={{ color: "#717680", fontSize: 14 }}>{purchase.failureReason}</Typography>
+                    ) : null}
                   </Box>
                   <Typography sx={{ flexShrink: 0, fontWeight: 600 }}>{money.format(Number(purchase.amount))}</Typography>
                 </Stack>

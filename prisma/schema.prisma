@@ -73,9 +73,10 @@ model Purchase {
   id          String   @id @default(cuid())
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  description String
-  amount      Decimal  @db.Decimal(10, 2)
-  purchasedAt DateTime @default(now())
+  description   String
+  amount        Decimal  @db.Decimal(10, 2)
+  failureReason String?
+  purchasedAt   DateTime @default(now())
   createdAt   DateTime @default(now())
 }
 
