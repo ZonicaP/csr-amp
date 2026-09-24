@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
-import { requestPasswordReset, resetPassword } from "@/lib/csr/csr-service";
+import { clearPasswordReset, requestPasswordReset, resetPassword } from "@/lib/csr/csr-service";
 import { csrErrorResponse } from "@/lib/csr/http";
+import { PasswordResetEmail } from "@/lib/email/password-reset-email";
+import { EmailDeliveryError } from "@/lib/email/smtp-transport";
+import { appUrl, createEmailService } from "@/lib/email/email-service";
 
 export async function POST(request: Request) {
   try {
@@ -8,12 +11,20 @@ export async function POST(request: Request) {
     if (typeof body.email !== "string") {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
     }
-    const result = await requestPasswordReset(body.email.toLowerCase());
-    const payload: { ok: true; resetToken?: string } = { ok: true };
-    if (process.env.NODE_ENV !== "production" && result.token) {
-      payload.resetToken = result.token;
+    const email = body.email.toLowerCase();
+    const result = await requestPasswordReset(email);
+    if (result.token && result.name) {
+      try {
+        await createEmailService().send(email, new PasswordResetEmail(appUrl(), result.name, result.token));
+      } catch (error) {
+        await clearPasswordReset(email);
+        if (error instanceof EmailDeliveryError) {
+          return NextResponse.json({ error: error.message }, { status: 502 });
+        }
+        throw error;
+      }
     }
-    return NextResponse.json(payload);
+    return NextResponse.json({ ok: true });
   } catch (error) {
     return csrErrorResponse(error);
   }

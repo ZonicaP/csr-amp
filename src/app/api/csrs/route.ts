@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { CsrRoleName } from "@prisma/client";
-import { inviteCsr, listCsrs } from "@/lib/csr/csr-service";
+import { deleteUnactivatedInvite, inviteCsr, listCsrs } from "@/lib/csr/csr-service";
 import { csrErrorResponse } from "@/lib/csr/http";
 import { readSession } from "@/lib/csr/session";
+import { InviteEmail } from "@/lib/email/invite-email";
+import { EmailDeliveryError } from "@/lib/email/smtp-transport";
+import { appUrl, createEmailService } from "@/lib/email/email-service";
 
 const roleNames = new Set<string>(Object.values(CsrRoleName));
 
@@ -46,7 +49,19 @@ export async function POST(request: Request) {
       displayName: body.displayName,
       roles: body.roles,
     });
-    return NextResponse.json(result, { status: 201 });
+    try {
+      await createEmailService().send(
+        result.csr.email,
+        new InviteEmail(appUrl(), result.csr.name, result.inviteToken),
+      );
+    } catch (error) {
+      await deleteUnactivatedInvite(result.csr.id);
+      if (error instanceof EmailDeliveryError) {
+        return NextResponse.json({ error: error.message }, { status: 502 });
+      }
+      throw error;
+    }
+    return NextResponse.json({ csr: result.csr }, { status: 201 });
   } catch (error) {
     return csrErrorResponse(error);
   }

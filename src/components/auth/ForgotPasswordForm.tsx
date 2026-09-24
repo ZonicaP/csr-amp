@@ -7,45 +7,28 @@ import Button from "@mui/material/Button";
 import Link from "@mui/material/Link";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
-import { AuthRequestError, postJson } from "@/lib/auth/http-client";
+import { postJson } from "@/lib/auth/http-client";
+import { useFormRequest } from "@/hooks/useFormRequest";
 
 export default function ForgotPasswordForm() {
   const [email, setEmail] = useState("");
-  const [error, setError] = useState("");
-  const [resetPath, setResetPath] = useState("");
-  const [pending, setPending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const { error, pending, run } = useFormRequest();
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError("");
-    setPending(true);
-    try {
-      const result = await postJson<{ ok: true; resetToken?: string }>("/api/auth/password-reset", { email });
-      setResetPath(result.resetToken ? `/reset-password?token=${encodeURIComponent(result.resetToken)}` : "sent");
-    } catch (caught) {
-      setError(caught instanceof AuthRequestError ? caught.message : "Something went wrong");
-    } finally {
-      setPending(false);
+    const result = await run(() => postJson<{ ok: true }>("/api/auth/password-reset", { email }));
+    if (result?.ok) {
+      setSent(true);
     }
   }
 
-  if (resetPath === "sent") {
+  if (sent) {
     return (
       <Stack spacing={2}>
-        <Alert severity="success">If that email belongs to an active CSR, a reset link is ready.</Alert>
+        <Alert severity="success">If that email belongs to an active CSR, a reset link is on its way.</Alert>
         <Button component={NextLink} href="/login" variant="outlined" fullWidth>
           Back to sign in
-        </Button>
-      </Stack>
-    );
-  }
-
-  if (resetPath) {
-    return (
-      <Stack spacing={2}>
-        <Alert severity="success">Reset link created for this local environment.</Alert>
-        <Button component={NextLink} href={resetPath} variant="contained" fullWidth>
-          Choose a new password
         </Button>
       </Stack>
     );

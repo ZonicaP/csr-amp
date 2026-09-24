@@ -8,26 +8,20 @@ import Link from "@mui/material/Link";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import PasswordField from "@/components/auth/PasswordField";
-import { AuthRequestError, postJson } from "@/lib/auth/http-client";
+import { postJson } from "@/lib/auth/http-client";
+import { useFormRequest } from "@/hooks/useFormRequest";
 
 export default function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
   const [signedIn, setSignedIn] = useState(false);
-  const [pending, setPending] = useState(false);
+  const { error, pending, run } = useFormRequest();
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError("");
-    setPending(true);
-    try {
-      await postJson("/api/auth/session", { email, password });
+    const result = await run(() => postJson("/api/auth/session", { email, password }));
+    if (result) {
       setSignedIn(true);
-    } catch (caught) {
-      setError(caught instanceof AuthRequestError ? caught.message : "Something went wrong");
-    } finally {
-      setPending(false);
     }
   }
 
