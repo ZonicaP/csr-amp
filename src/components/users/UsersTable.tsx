@@ -17,14 +17,8 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { AuthRequestError } from "@/lib/auth/http-client";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { customersCacheKey, useCustomersStore, type CustomersPage } from "@/lib/users/customers-store";
 import { phoneDigits, searchTokens, type UserListItem } from "@/lib/users/user-list";
-
-type UsersResponse = {
-  users: UserListItem[];
-  page: number;
-  pageSize: number;
-  total: number;
-};
 
 const statusColor = {
   ACTIVE: "success",
@@ -109,20 +103,23 @@ function HighlightMatch({ text, query }: { text: string; query: string }) {
 }
 
 export default function UsersTable() {
-  const [query, setQuery] = useState("");
+  const query = useCustomersStore((state) => state.query);
+  const setQuery = useCustomersStore((state) => state.setQuery);
+  const page = useCustomersStore((state) => state.page);
+  const setPage = useCustomersStore((state) => state.setPage);
+  const remember = useCustomersStore((state) => state.remember);
   const debounced = useDebouncedValue(query, 300);
-  const [page, setPage] = useState(1);
   const [previousQuery, setPreviousQuery] = useState(debounced);
-  const [data, setData] = useState<UsersResponse | null>(null);
   const [error, setError] = useState("");
   const [pending, setPending] = useState(true);
 
   if (debounced !== previousQuery) {
     setPreviousQuery(debounced);
-    setPage(1);
+    if (page !== 1) setPage(1);
   }
 
   const requestPage = debounced === previousQuery ? page : 1;
+  const cached = useCustomersStore((state) => state.pages[customersCacheKey(debounced, requestPage)] ?? null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -130,11 +127,16 @@ export default function UsersTable() {
     setPending(true);
     fetch(`/api/users?${params}`, { signal: controller.signal })
       .then(async (response) => {
-        const body = (await response.json()) as UsersResponse & { error?: string };
+        const body = (await response.json()) as CustomersPage & { error?: string };
         if (!response.ok) {
           throw new AuthRequestError(body.error ?? "Something went wrong");
         }
-        setData(body);
+        remember(debounced, requestPage, {
+          users: body.users,
+          page: body.page,
+          pageSize: body.pageSize,
+          total: body.total,
+        });
         setError("");
       })
       .catch((caught: unknown) => {
@@ -149,10 +151,10 @@ export default function UsersTable() {
         }
       });
     return () => controller.abort();
-  }, [debounced, requestPage]);
+  }, [debounced, remember, requestPage]);
 
-  const users = data?.users ?? [];
-  const total = data?.total ?? 0;
+  const users = cached?.users ?? [];
+  const total = cached?.total ?? 0;
 
   return (
     <Stack spacing={2}>
