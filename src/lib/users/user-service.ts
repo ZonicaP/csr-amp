@@ -45,5 +45,39 @@ export async function listUsers(actorId: string, query: string, page: number) {
       select: { id: true, membershipId: true, firstName: true, lastName: true, email: true, phone: true, status: true },
     }),
   ]);
-  return { users, page: safePage, pageSize: USER_PAGE_SIZE, total };
+  if (total === 0 && tokens.length > 0) {
+    return listApproximateUsers(tokens, safePage);
+  }
+  return { users, page: safePage, pageSize: USER_PAGE_SIZE, total, approximate: false };
+}
+
+async function listApproximateUsers(tokens: string[], page: number) {
+  const matches = tokens.map(
+    (token) =>
+      Prisma.sql`(
+        word_similarity(${token}, "firstName") > 0.55
+        OR word_similarity(${token}, "lastName") > 0.55
+        OR word_similarity(${token}, email) > 0.55
+      )`,
+  );
+  const where = Prisma.join(matches, " AND ");
+  const skip = (page - 1) * USER_PAGE_SIZE;
+  const [countRows, users] = await prisma.$transaction([
+    prisma.$queryRaw<{ count: number }[]>`SELECT count(*)::int AS count FROM "User" WHERE ${where}`,
+    prisma.$queryRaw<UserListItem[]>`
+      SELECT id, "membershipId", "firstName", "lastName", email, phone, status::text AS status
+      FROM "User"
+      WHERE ${where}
+      ORDER BY "lastName" ASC, "firstName" ASC
+      LIMIT ${USER_PAGE_SIZE} OFFSET ${skip}
+    `,
+  ]);
+  const total = countRows[0]?.count ?? 0;
+  return {
+    users: total === 0 ? [] : users,
+    page,
+    pageSize: USER_PAGE_SIZE,
+    total,
+    approximate: total > 0,
+  };
 }

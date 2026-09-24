@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
@@ -18,7 +18,7 @@ import Typography from "@mui/material/Typography";
 import { AuthRequestError } from "@/lib/auth/http-client";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { customersCacheKey, useCustomersStore, type CustomersPage } from "@/lib/users/customers-store";
-import { phoneDigits, searchTokens, type UserListItem } from "@/lib/users/user-list";
+import { customerMatchesQuery, phoneDigits, searchTokens, type UserListItem } from "@/lib/users/user-list";
 
 const statusColor = {
   ACTIVE: "success",
@@ -120,6 +120,17 @@ export default function UsersTable() {
 
   const requestPage = debounced === previousQuery ? page : 1;
   const cached = useCustomersStore((state) => state.pages[customersCacheKey(debounced, requestPage)] ?? null);
+  const shownRef = useRef<UserListItem[]>([]);
+  const previewRef = useRef<UserListItem[] | null>(null);
+  if (cached) {
+    shownRef.current = cached.users;
+    previewRef.current = null;
+  } else if (debounced !== previousQuery) {
+    previewRef.current = shownRef.current.filter((customer) => customerMatchesQuery(customer, debounced));
+  }
+
+  const users = cached?.users ?? previewRef.current ?? [];
+  const total = cached?.total ?? users.length;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -136,6 +147,7 @@ export default function UsersTable() {
           page: body.page,
           pageSize: body.pageSize,
           total: body.total,
+          approximate: body.approximate,
         });
         setError("");
       })
@@ -153,9 +165,6 @@ export default function UsersTable() {
     return () => controller.abort();
   }, [debounced, remember, requestPage]);
 
-  const users = cached?.users ?? [];
-  const total = cached?.total ?? 0;
-
   return (
     <Stack spacing={2}>
       <TextField
@@ -167,6 +176,9 @@ export default function UsersTable() {
       />
       {error ? <Alert severity="error">{error}</Alert> : null}
       {pending && users.length === 0 ? <Typography>Loading customers…</Typography> : null}
+      {cached?.approximate && users.length > 0 ? (
+        <Typography sx={{ color: "#717680" }}>Showing close matches.</Typography>
+      ) : null}
       <Box sx={{ display: { xs: "none", md: "block" } }}>
         <TableContainer component={Paper} elevation={0} sx={{ border: "1px solid #E5E7EB", borderRadius: 3 }}>
           <Table>
@@ -206,24 +218,26 @@ export default function UsersTable() {
           </Table>
         </TableContainer>
       </Box>
-      <Stack spacing={1.5} sx={{ display: { xs: "flex", md: "none" } }}>
+      <Stack spacing={1} sx={{ display: { xs: "flex", md: "none" } }}>
         {users.map((user) => (
-          <Paper key={user.id} elevation={0} sx={{ p: 2, border: "1px solid #E5E7EB", borderRadius: 3 }}>
-            <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1, alignItems: "flex-start" }}>
-              <Typography sx={{ color: "#003264", fontWeight: 600 }}>
+          <Paper key={user.id} elevation={0} sx={{ px: 1.5, py: 1.25, border: "1px solid #E5E7EB", borderRadius: 3 }}>
+            <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1, alignItems: "center" }}>
+              <Typography sx={{ color: "#003264", fontWeight: 600, minWidth: 0 }}>
                 <HighlightMatch text={user.firstName} query={debounced} /> <HighlightMatch text={user.lastName} query={debounced} />
               </Typography>
               <StatusChip status={user.status} />
             </Stack>
-            <Typography sx={{ mt: 0.5, color: "#003264", fontWeight: 600 }}>
+            <Typography sx={{ color: "#003264", fontWeight: 600, fontSize: 14 }}>
               <HighlightMatch text={user.membershipId} query={debounced} />
             </Typography>
-            <Typography sx={{ mt: 0.5 }}>
-              <HighlightMatch text={user.email} query={debounced} />
-            </Typography>
-            <Typography variant="body2">
-              {user.phone ? <HighlightPhone phone={user.phone} query={debounced} /> : "No phone"}
-            </Typography>
+            <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1, alignItems: "baseline" }}>
+              <Typography noWrap sx={{ minWidth: 0, fontSize: 14 }}>
+                <HighlightMatch text={user.email} query={debounced} />
+              </Typography>
+              <Typography sx={{ flexShrink: 0, fontSize: 14, color: "#717680" }}>
+                {user.phone ? <HighlightPhone phone={user.phone} query={debounced} /> : "No phone"}
+              </Typography>
+            </Stack>
           </Paper>
         ))}
         {!pending && users.length === 0 ? <Typography>No customers match that search.</Typography> : null}
