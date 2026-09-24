@@ -1,4 +1,4 @@
-import { CsrRoleName, CsrStatus } from "@prisma/client";
+import { AccountStatus, CsrRoleName, CsrStatus } from "@prisma/client";
 import { prisma } from "../src/lib/prisma.ts";
 import { hashPassword } from "../src/lib/csr/password.ts";
 
@@ -17,22 +17,44 @@ async function main() {
   const existing = await prisma.csr.findUnique({ where: { email } });
   if (existing) {
     console.log(`Admin already exists for ${email}`);
-    return;
+  } else {
+    await prisma.csr.create({
+      data: {
+        name,
+        surname,
+        email,
+        displayName: `${name} ${surname}`,
+        status: CsrStatus.ACTIVE,
+        passwordHash: hashPassword(password),
+        emailVerifiedAt: new Date(),
+        roles: { create: [{ role: CsrRoleName.ADMIN }] },
+      },
+    });
+    console.log(`Seeded admin ${email}`);
   }
 
-  await prisma.csr.create({
-    data: {
-      name,
-      surname,
-      email,
-      displayName: `${name} ${surname}`,
-      status: CsrStatus.ACTIVE,
-      passwordHash: hashPassword(password),
-      emailVerifiedAt: new Date(),
-      roles: { create: [{ role: CsrRoleName.ADMIN }] },
-    },
-  });
-  console.log(`Seeded admin ${email}`);
+  await seedCustomers();
+}
+
+async function seedCustomers() {
+  await prisma.user.deleteMany({ where: { email: { endsWith: "@example.com" } } });
+  const firstNames = ["Ava", "Noah", "Mia", "Liam", "Sofia", "Ethan", "Amelia", "Lucas"];
+  const lastNames = ["Nguyen", "Patel", "Brooks", "Diaz", "Keller", "Okonkwo"];
+  const statuses = [AccountStatus.ACTIVE, AccountStatus.OVERDUE, AccountStatus.CANCELLED];
+  const users = firstNames.flatMap((firstName, firstIndex) =>
+    lastNames.map((lastName, lastIndex) => {
+      const index = firstIndex * lastNames.length + lastIndex;
+      return {
+        firstName,
+        lastName,
+        email: `${firstName}.${lastName}@example.com`.toLowerCase(),
+        phone: `555-010-${String(index + 1).padStart(2, "0")}`,
+        status: statuses[index % statuses.length],
+      };
+    }),
+  );
+  await prisma.user.createMany({ data: users });
+  console.log(`Seeded ${users.length} customers`);
 }
 
 main()

@@ -1,1 +1,4 @@
-export const appNav = [{ href: "/", label: "Home" }] as const;
+export const appNav = [
+  { href: "/", label: "Home" },
+  { href: "/customers", label: "Customers" },
+] as const;
