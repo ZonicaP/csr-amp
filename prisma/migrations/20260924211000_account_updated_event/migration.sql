@@ -1,0 +1,1 @@
+ALTER TYPE "CustomerEventType" ADD VALUE 'ACCOUNT_UPDATED';
