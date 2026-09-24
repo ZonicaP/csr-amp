@@ -5,6 +5,7 @@ import Chip from "@mui/material/Chip";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
+import VehicleCard from "@/components/users/VehicleCard";
 import { requireVerifiedCsr } from "@/lib/csr/guard";
 import { hasPermission } from "@/lib/csr/permissions";
 import { getCustomer } from "@/lib/users/user-service";
@@ -76,40 +77,45 @@ export default async function CustomerPage({ params }: { params: Promise<{ membe
             {customer.vehicles.length === 0 ? <Typography>No vehicles on this account.</Typography> : null}
             {customer.vehicles.map((vehicle) => {
               const plan = vehicle.subscriptions[0];
+              const failed = customer.purchases.find((purchase) => purchase.failureReason);
+              const paid = customer.purchases.find((purchase) => !purchase.failureReason);
               return (
-                <Paper key={vehicle.id} elevation={0} sx={{ px: 1.5, py: 1.25, border: "1px solid #E5E7EB", borderRadius: 3 }}>
-                  <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1, alignItems: "flex-start" }}>
-                    <Box sx={{ minWidth: 0 }}>
-                      <Typography sx={{ color: "#003264", fontWeight: 600 }}>{vehicleLabel(vehicle)}</Typography>
-                      <Typography sx={{ color: "#717680", fontSize: 14 }}>
-                        {plan ? `Since ${date.format(plan.startedAt)}` : "No membership on this vehicle."}
-                      </Typography>
-                      {plan && customer.status !== "CANCELLED" ? (
-                        <Typography sx={{ color: customer.status === "OVERDUE" ? "#FFA100" : "#11B76B", fontSize: 13, fontWeight: 600 }}>
-                          {customer.status === "OVERDUE" ? "Payment outstanding" : "Up to date"}
-                        </Typography>
-                      ) : null}
-                    </Box>
-                    <Box sx={{ flexShrink: 0, textAlign: "right" }}>
-                      <Stack spacing={0.5} sx={{ alignItems: "flex-end" }}>
-                        {vehicle.subscriptions.map((subscription) => (
-                          <Chip key={subscription.id} size="small" label={subscription.planName} color={statusColor[subscription.status]} />
-                        ))}
-                        <Typography sx={{ fontSize: 14 }}>{vehicle.licensePlate ?? "No plate"}</Typography>
-                      </Stack>
-                    </Box>
-                  </Stack>
-                </Paper>
+                <VehicleCard
+                  key={vehicle.id}
+                  name={vehicleLabel(vehicle)}
+                  plate={vehicle.licensePlate}
+                  since={plan ? date.format(plan.startedAt) : null}
+                  plans={vehicle.subscriptions.map((subscription) => ({
+                    id: subscription.id,
+                    name: subscription.planName,
+                    status: subscription.status,
+                  }))}
+                  payment={!plan || customer.status === "CANCELLED" ? null : customer.status === "OVERDUE" ? "outstanding" : "up-to-date"}
+                  failure={
+                    failed?.failureReason
+                      ? {
+                          reason: failed.failureReason,
+                          amount: money.format(Number(failed.amount)),
+                          date: date.format(failed.purchasedAt),
+                        }
+                      : null
+                  }
+                  lastPayment={
+                    paid
+                      ? { amount: money.format(Number(paid.amount)), date: date.format(paid.purchasedAt) }
+                      : null
+                  }
+                />
               );
             })}
           </Stack>
         </Box>
         <Box>
           <Typography component="h2" sx={{ color: "#003264", fontWeight: 600, mb: 1 }}>
-            Purchases
+            Payment history
           </Typography>
           <Stack spacing={1}>
-            {customer.purchases.length === 0 ? <Typography>No purchases on this account.</Typography> : null}
+            {customer.purchases.length === 0 ? <Typography>No payments on this account.</Typography> : null}
             {customer.purchases.map((purchase) => (
               <Paper key={purchase.id} elevation={0} sx={{ px: 2, py: 1.25, border: "1px solid #E5E7EB", borderRadius: 3 }}>
                 <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1, alignItems: "flex-start" }}>
