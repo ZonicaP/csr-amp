@@ -8,6 +8,76 @@ export const USER_PAGE_SIZE = 20;
 
 export type { UserListItem };
 
+type UserPage = {
+  users: UserListItem[];
+  total: number;
+};
+
+type Queryable = {
+  $queryRaw: typeof prisma.$queryRaw;
+};
+
+function containsPattern(value: string) {
+  return `%${value.replace(/[\\%_]/g, (character) => `\\${character}`)}%`;
+}
+
+function exactWhere(tokens: string[]) {
+  if (tokens.length === 0) return Prisma.sql`TRUE`;
+  return Prisma.join(
+    tokens.map((token) => {
+      const pattern = containsPattern(token);
+      const clauses = [
+        Prisma.sql`"firstName" ILIKE ${pattern} ESCAPE '\\'`,
+        Prisma.sql`"lastName" ILIKE ${pattern} ESCAPE '\\'`,
+        Prisma.sql`email ILIKE ${pattern} ESCAPE '\\'`,
+        Prisma.sql`phone ILIKE ${pattern} ESCAPE '\\'`,
+        Prisma.sql`"membershipId" ILIKE ${pattern} ESCAPE '\\'`,
+      ];
+      const digits = phoneDigits(token);
+      const membershipKey = token.replace(/[^a-z0-9]/gi, "");
+      if (digits) clauses.push(Prisma.sql`"phoneDigits" ILIKE ${containsPattern(digits)} ESCAPE '\\'`);
+      if (membershipKey) clauses.push(Prisma.sql`"membershipIdKey" ILIKE ${containsPattern(membershipKey)} ESCAPE '\\'`);
+      return Prisma.sql`(${Prisma.join(clauses, " OR ")})`;
+    }),
+    " AND ",
+  );
+}
+
+function approximateWhere(tokens: string[]) {
+  return Prisma.join(
+    tokens.map(
+      (token) => Prisma.sql`(
+        ${token} <% "firstName"
+        OR ${token} <% "lastName"
+        OR ${token} <% email
+      )`,
+    ),
+    " AND ",
+  );
+}
+
+async function queryUserPage(db: Queryable, where: Prisma.Sql, page: number): Promise<UserPage> {
+  const offset = (page - 1) * USER_PAGE_SIZE;
+  const rows = await db.$queryRaw<Array<UserListItem & { total: number }>>`
+    WITH matched AS (
+      SELECT id, "membershipId", "firstName", "lastName", email, phone, status::text AS status
+      FROM "User"
+      WHERE ${where}
+    )
+    SELECT matched.id, matched."membershipId", matched."firstName", matched."lastName",
+           matched.email, matched.phone, matched.status, counted.total
+    FROM (SELECT count(*)::int AS total FROM matched) counted
+    LEFT JOIN (
+      SELECT * FROM matched
+      ORDER BY "lastName" ASC, "firstName" ASC
+      LIMIT ${USER_PAGE_SIZE} OFFSET ${offset}
+    ) matched ON true
+  `;
+  const total = rows[0]?.total ?? 0;
+  const users = rows.flatMap(({ total: _total, ...user }) => (user.id ? [user] : []));
+  return { users, total };
+}
+
 export async function listUsers(actorId: string, query: string, page: number) {
   const actor = await currentCsr(actorId);
   if (!hasPermission(actor.roles, "customers:read")) {
@@ -15,69 +85,17 @@ export async function listUsers(actorId: string, query: string, page: number) {
   }
   const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
   const tokens = searchTokens(query);
-  const where: Prisma.UserWhereInput =
-    tokens.length === 0
-      ? {}
-      : {
-          AND: tokens.map((token) => {
-            const digits = phoneDigits(token);
-            const membershipKey = token.replace(/[^a-z0-9]/gi, "");
-            return {
-              OR: [
-                { firstName: { contains: token, mode: "insensitive" } },
-                { lastName: { contains: token, mode: "insensitive" } },
-                { email: { contains: token, mode: "insensitive" } },
-                { phone: { contains: token, mode: "insensitive" } },
-                { membershipId: { contains: token, mode: "insensitive" } },
-                ...(digits ? [{ phoneDigits: { contains: digits } }] : []),
-                ...(membershipKey ? [{ membershipIdKey: { contains: membershipKey, mode: "insensitive" as const } }] : []),
-              ],
-            };
-          }),
-        };
-  const [total, users] = await prisma.$transaction([
-    prisma.user.count({ where }),
-    prisma.user.findMany({
-      where,
-      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
-      skip: (safePage - 1) * USER_PAGE_SIZE,
-      take: USER_PAGE_SIZE,
-      select: { id: true, membershipId: true, firstName: true, lastName: true, email: true, phone: true, status: true },
-    }),
-  ]);
-  if (total === 0 && tokens.length > 0) {
-    return listApproximateUsers(tokens, safePage);
+  const exact = await queryUserPage(prisma, exactWhere(tokens), safePage);
+  if (exact.total > 0 || tokens.length === 0) {
+    return { ...exact, page: safePage, pageSize: USER_PAGE_SIZE, approximate: false };
   }
-  return { users, page: safePage, pageSize: USER_PAGE_SIZE, total, approximate: false };
+  return listApproximateUsers(tokens, safePage);
 }
 
 async function listApproximateUsers(tokens: string[], page: number) {
-  const matches = tokens.map(
-    (token) =>
-      Prisma.sql`(
-        word_similarity(${token}, "firstName") > 0.55
-        OR word_similarity(${token}, "lastName") > 0.55
-        OR word_similarity(${token}, email) > 0.55
-      )`,
-  );
-  const where = Prisma.join(matches, " AND ");
-  const skip = (page - 1) * USER_PAGE_SIZE;
-  const [countRows, users] = await prisma.$transaction([
-    prisma.$queryRaw<{ count: number }[]>`SELECT count(*)::int AS count FROM "User" WHERE ${where}`,
-    prisma.$queryRaw<UserListItem[]>`
-      SELECT id, "membershipId", "firstName", "lastName", email, phone, status::text AS status
-      FROM "User"
-      WHERE ${where}
-      ORDER BY "lastName" ASC, "firstName" ASC
-      LIMIT ${USER_PAGE_SIZE} OFFSET ${skip}
-    `,
-  ]);
-  const total = countRows[0]?.count ?? 0;
-  return {
-    users: total === 0 ? [] : users,
-    page,
-    pageSize: USER_PAGE_SIZE,
-    total,
-    approximate: total > 0,
-  };
+  const pageResult = await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT set_config('pg_trgm.word_similarity_threshold', '0.55', true)`;
+    return queryUserPage(tx, approximateWhere(tokens), page);
+  });
+  return { ...pageResult, page, pageSize: USER_PAGE_SIZE, approximate: pageResult.total > 0 };
 }
