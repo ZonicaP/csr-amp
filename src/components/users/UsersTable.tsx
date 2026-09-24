@@ -134,8 +134,8 @@ export default function UsersTable() {
   const users = cached?.users ?? previewRef.current ?? [];
   const total = cached?.total ?? users.length;
 
-  function openCustomer(id: string) {
-    router.push(`/customers/${id}`);
+  function openCustomer(membershipId: string) {
+    router.push(`/customers/${encodeURIComponent(membershipId)}`);
   }
 
   useEffect(() => {
@@ -203,9 +203,9 @@ export default function UsersTable() {
                   key={user.id}
                   hover
                   tabIndex={0}
-                  onClick={() => openCustomer(user.id)}
+                  onClick={() => openCustomer(user.membershipId)}
                   onKeyDown={(event) => {
-                    if (event.key === "Enter") openCustomer(user.id);
+                    if (event.key === "Enter") openCustomer(user.membershipId);
                   }}
                   sx={{ cursor: "pointer" }}
                 >
@@ -239,9 +239,9 @@ export default function UsersTable() {
             key={user.id}
             elevation={0}
             tabIndex={0}
-            onClick={() => openCustomer(user.id)}
+            onClick={() => openCustomer(user.membershipId)}
             onKeyDown={(event) => {
-              if (event.key === "Enter") openCustomer(user.id);
+              if (event.key === "Enter") openCustomer(user.membershipId);
             }}
             sx={{ px: 1.5, py: 1.25, border: "1px solid #E5E7EB", borderRadius: 3, cursor: "pointer" }}
           >

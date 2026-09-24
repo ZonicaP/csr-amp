@@ -1,5 +1,5 @@
 import NextLink from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
 import Paper from "@mui/material/Paper";
@@ -18,8 +18,8 @@ const statusColor = {
   CANCELLED: "default",
 } as const;
 
-export default async function CustomerPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export default async function CustomerPage({ params }: { params: Promise<{ membershipId: string }> }) {
+  const { membershipId } = await params;
   const csr = await requireVerifiedCsr();
   if (!hasPermission(csr.roles, "customers:read")) {
     return (
@@ -28,8 +28,9 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
       </Box>
     );
   }
-  const customer = await getCustomer(csr.id, id);
+  const customer = await getCustomer(csr.id, membershipId);
   if (!customer) notFound();
+  if (customer.membershipId !== membershipId) redirect(`/customers/${encodeURIComponent(customer.membershipId)}`);
 
   const vehicleLabel = (vehicle: (typeof customer.vehicles)[number]) =>
     [vehicle.year, vehicle.make, vehicle.model].filter(Boolean).join(" ") || "Vehicle";
@@ -76,22 +77,29 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
           </Typography>
           <Stack spacing={1}>
             {customer.vehicles.length === 0 ? <Typography>No vehicles on this account.</Typography> : null}
-            {customer.vehicles.map((vehicle) => (
-              <Paper key={vehicle.id} elevation={0} sx={{ p: 2, border: "1px solid #E5E7EB", borderRadius: 3 }}>
-                <Typography sx={{ color: "#003264", fontWeight: 600 }}>{vehicleLabel(vehicle)}</Typography>
-                <Typography sx={{ fontSize: 14 }}>{vehicle.licensePlate ?? "No plate"}</Typography>
-                {vehicle.subscriptions.length === 0 ? (
-                  <Typography sx={{ mt: 1, fontSize: 14 }}>No membership on this vehicle.</Typography>
-                ) : (
-                  vehicle.subscriptions.map((subscription) => (
-                    <Stack key={subscription.id} direction="row" sx={{ mt: 1, justifyContent: "space-between", gap: 1, alignItems: "center" }}>
-                      <Typography sx={{ color: "#717680", fontSize: 14 }}>Since {date.format(subscription.startedAt)}</Typography>
-                      <Chip size="small" label={subscription.planName} color={statusColor[subscription.status]} />
-                    </Stack>
-                  ))
-                )}
-              </Paper>
-            ))}
+            {customer.vehicles.map((vehicle) => {
+              const plan = vehicle.subscriptions[0];
+              return (
+                <Paper key={vehicle.id} elevation={0} sx={{ px: 1.5, py: 1.25, border: "1px solid #E5E7EB", borderRadius: 3 }}>
+                  <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1, alignItems: "flex-start" }}>
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography sx={{ color: "#003264", fontWeight: 600 }}>{vehicleLabel(vehicle)}</Typography>
+                      <Typography sx={{ color: "#717680", fontSize: 14 }}>
+                        {plan ? `Since ${date.format(plan.startedAt)}` : "No membership on this vehicle."}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ flexShrink: 0, textAlign: "right" }}>
+                      <Stack spacing={0.5} sx={{ alignItems: "flex-end" }}>
+                        {vehicle.subscriptions.map((subscription) => (
+                          <Chip key={subscription.id} size="small" label={subscription.planName} color={statusColor[subscription.status]} />
+                        ))}
+                        <Typography sx={{ fontSize: 14 }}>{vehicle.licensePlate ?? "No plate"}</Typography>
+                      </Stack>
+                    </Box>
+                  </Stack>
+                </Paper>
+              );
+            })}
           </Stack>
         </Box>
         <Box>
