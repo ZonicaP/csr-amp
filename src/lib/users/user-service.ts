@@ -125,7 +125,7 @@ const customerSelect = {
   },
   purchases: {
     orderBy: { purchasedAt: "desc" as const },
-    select: { id: true, description: true, amount: true, purchasedAt: true },
+    select: { id: true, description: true, amount: true, failureReason: true, purchasedAt: true },
   },
   events: {
     orderBy: { createdAt: "desc" as const },

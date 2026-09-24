@@ -99,23 +99,30 @@ async function seedCustomers() {
         },
       },
     });
-    await prisma.purchase.create({
-      data: {
-        userId: customer.id,
-        description: plan,
-        amount,
-        purchasedAt: customer.status === AccountStatus.ACTIVE ? latestAt : renewedAt,
-      },
+    const payments = [new Date(Date.UTC(2024, 5, 12, 16)), renewedAt];
+    if (customer.status === AccountStatus.ACTIVE) payments.push(latestAt);
+    await prisma.purchase.createMany({
+      data: [
+        ...payments.map((purchasedAt) => ({
+          userId: customer.id,
+          description: plan,
+          amount,
+          purchasedAt,
+        })),
+        ...(customer.status === AccountStatus.OVERDUE
+          ? [{ userId: customer.id, description: plan, amount, failureReason: declineReason, purchasedAt: latestAt }]
+          : []),
+      ],
     });
     const events: { type: "ACCOUNT_OPENED" | "PLAN_STARTED" | "PAYMENT_RECEIVED" | "PAYMENT_FAILED" | "ACCOUNT_OVERDUE" | "PLAN_CANCELLED" | "ACCOUNT_CANCELLED"; summary: string; createdAt: Date }[] = [
       { type: "ACCOUNT_OPENED", summary: "Account opened", createdAt: openedAt },
       { type: "PLAN_STARTED", summary: `${plan} started on ${vehicleName}`, createdAt: openedAt },
-      { type: "PAYMENT_RECEIVED", summary: `Payment of ${price} received for ${plan}`, createdAt: new Date(Date.UTC(2024, 5, 12, 16)) },
-      { type: "PAYMENT_RECEIVED", summary: `Payment of ${price} received for ${plan}`, createdAt: renewedAt },
+      ...payments.map((createdAt) => ({
+        type: "PAYMENT_RECEIVED" as const,
+        summary: `Payment of ${price} received for ${plan}`,
+        createdAt,
+      })),
     ];
-    if (customer.status === AccountStatus.ACTIVE) {
-      events.push({ type: "PAYMENT_RECEIVED", summary: `Payment of ${price} received for ${plan}`, createdAt: latestAt });
-    }
     if (customer.status === AccountStatus.OVERDUE) {
       events.push(
         { type: "PAYMENT_FAILED", summary: `Payment of ${price} failed for ${plan}. ${declineReason}`, createdAt: latestAt },
