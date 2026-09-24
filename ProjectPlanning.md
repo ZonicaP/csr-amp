@@ -7,6 +7,7 @@
 - Prompted CI/CD setup to run migrations and deploy on push to the main branch.
 - In principle, pull requests should be submitted and approved before merging into main, with a staging environment and possibly a develop branch. For this project, pushes to main deploy directly.
 - Used the Vercel and Supabase MCP connections to set up the projects.
+- CSR accounts are invite-only. An admin assigns roles on the invite, the CSR sets a password to activate the account, and access is the combined permissions of those roles.
 
 ## Core expectations
 

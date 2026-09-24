@@ -13,7 +13,9 @@
     "db:migrate:local": "DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres DIRECT_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres prisma migrate dev",
     "db:reset:local": "supabase db reset --local --no-seed && DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres DIRECT_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres prisma migrate deploy",
     "db:stop": "supabase stop",
-    "db:deploy": "prisma migrate deploy"
+    "db:deploy": "prisma migrate deploy",
+    "db:seed": "prisma db seed",
+    "test": "node --experimental-strip-types --test src/lib/csr/permissions.test.ts"
   },
   "dependencies": {
     "@emotion/cache": "^11.14.0",
@@ -34,5 +36,8 @@
     "eslint-config-next": "16.3.6",
     "prisma": "^6.19.3",
     "typescript": "^5"
+  },
+  "prisma": {
+    "seed": "node --experimental-strip-types prisma/seed.ts"
   }
 }
