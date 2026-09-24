@@ -51,10 +51,87 @@ async function seedCustomers() {
         phone: `555-010-${String(index + 1).padStart(2, "0")}`,
         membershipId: `AMP-${String(10001 + index)}`,
         status: statuses[index % statuses.length],
+        createdAt: new Date(Date.UTC(2024, 0, 15, 16)),
       };
     }),
   );
   await prisma.user.createMany({ data: users });
+  const created = await prisma.user.findMany({
+    where: { email: { endsWith: "@example.com" } },
+    select: { id: true, status: true },
+    orderBy: { membershipId: "asc" },
+  });
+  const plans = ["Unlimited Wash", "Basic Wash", "The Works"];
+  const cars = [
+    { make: "Toyota", model: "Camry" },
+    { make: "Honda", model: "CR-V" },
+    { make: "Tesla", model: "Model 3" },
+  ];
+  for (const [index, customer] of created.entries()) {
+    const car = cars[index % cars.length];
+    const plan = plans[index % plans.length];
+    const year = 2018 + (index % 7);
+    const vehicleName = `${year} ${car.make} ${car.model}`;
+    const amount = [39.99, 19.99, 49.99][index % 3];
+    const price = `$${amount.toFixed(2)}`;
+    const declineReasons = [
+      "Card declined, insufficient funds",
+      "Card expired",
+      "Card declined, do not honor",
+    ];
+    const declineReason = declineReasons[Math.floor(index / 3) % declineReasons.length];
+    const openedAt = new Date(Date.UTC(2024, 0, 15, 16));
+    const renewedAt = new Date(Date.UTC(2025, 0, 12, 16));
+    const latestAt = new Date(Date.UTC(2025, customer.status === AccountStatus.ACTIVE ? 7 : 5, 12, 16));
+    await prisma.vehicle.create({
+      data: {
+        userId: customer.id,
+        make: car.make,
+        model: car.model,
+        year,
+        licensePlate: `AMP${String(1000 + index)}`,
+        subscriptions: {
+          create: {
+            planName: plan,
+            status: customer.status === AccountStatus.CANCELLED ? "CANCELLED" : "ACTIVE",
+            startedAt: openedAt,
+          },
+        },
+      },
+    });
+    await prisma.purchase.create({
+      data: {
+        userId: customer.id,
+        description: plan,
+        amount,
+        purchasedAt: customer.status === AccountStatus.ACTIVE ? latestAt : renewedAt,
+      },
+    });
+    const events: { type: "ACCOUNT_OPENED" | "PLAN_STARTED" | "PAYMENT_RECEIVED" | "PAYMENT_FAILED" | "ACCOUNT_OVERDUE" | "PLAN_CANCELLED" | "ACCOUNT_CANCELLED"; summary: string; createdAt: Date }[] = [
+      { type: "ACCOUNT_OPENED", summary: "Account opened", createdAt: openedAt },
+      { type: "PLAN_STARTED", summary: `${plan} started on ${vehicleName}`, createdAt: openedAt },
+      { type: "PAYMENT_RECEIVED", summary: `Payment of ${price} received for ${plan}`, createdAt: new Date(Date.UTC(2024, 5, 12, 16)) },
+      { type: "PAYMENT_RECEIVED", summary: `Payment of ${price} received for ${plan}`, createdAt: renewedAt },
+    ];
+    if (customer.status === AccountStatus.ACTIVE) {
+      events.push({ type: "PAYMENT_RECEIVED", summary: `Payment of ${price} received for ${plan}`, createdAt: latestAt });
+    }
+    if (customer.status === AccountStatus.OVERDUE) {
+      events.push(
+        { type: "PAYMENT_FAILED", summary: `Payment of ${price} failed for ${plan}. ${declineReason}`, createdAt: latestAt },
+        { type: "ACCOUNT_OVERDUE", summary: `Account marked overdue. ${declineReason}`, createdAt: new Date(Date.UTC(2025, 5, 13, 16)) },
+      );
+    }
+    if (customer.status === AccountStatus.CANCELLED) {
+      events.push(
+        { type: "PLAN_CANCELLED", summary: `${plan} cancelled on ${vehicleName}`, createdAt: latestAt },
+        { type: "ACCOUNT_CANCELLED", summary: "Account cancelled", createdAt: new Date(latestAt.getTime() + 60_000) },
+      );
+    }
+    await prisma.customerEvent.createMany({
+      data: events.map((event) => ({ userId: customer.id, ...event })),
+    });
+  }
   console.log(`Seeded ${users.length} customers`);
 }
 

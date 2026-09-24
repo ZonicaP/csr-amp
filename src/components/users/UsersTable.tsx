@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
@@ -103,6 +104,7 @@ function HighlightMatch({ text, query }: { text: string; query: string }) {
 }
 
 export default function UsersTable() {
+  const router = useRouter();
   const query = useCustomersStore((state) => state.query);
   const setQuery = useCustomersStore((state) => state.setQuery);
   const page = useCustomersStore((state) => state.page);
@@ -131,6 +133,10 @@ export default function UsersTable() {
 
   const users = cached?.users ?? previewRef.current ?? [];
   const total = cached?.total ?? users.length;
+
+  function openCustomer(id: string) {
+    router.push(`/customers/${id}`);
+  }
 
   useEffect(() => {
     const controller = new AbortController();
@@ -193,7 +199,16 @@ export default function UsersTable() {
             </TableHead>
             <TableBody>
               {users.map((user) => (
-                <TableRow key={user.id} hover>
+                <TableRow
+                  key={user.id}
+                  hover
+                  tabIndex={0}
+                  onClick={() => openCustomer(user.id)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") openCustomer(user.id);
+                  }}
+                  sx={{ cursor: "pointer" }}
+                >
                   <TableCell>
                     <HighlightMatch text={user.firstName} query={debounced} /> <HighlightMatch text={user.lastName} query={debounced} />
                   </TableCell>
@@ -220,7 +235,16 @@ export default function UsersTable() {
       </Box>
       <Stack spacing={1} sx={{ display: { xs: "flex", md: "none" } }}>
         {users.map((user) => (
-          <Paper key={user.id} elevation={0} sx={{ px: 1.5, py: 1.25, border: "1px solid #E5E7EB", borderRadius: 3 }}>
+          <Paper
+            key={user.id}
+            elevation={0}
+            tabIndex={0}
+            onClick={() => openCustomer(user.id)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") openCustomer(user.id);
+            }}
+            sx={{ px: 1.5, py: 1.25, border: "1px solid #E5E7EB", borderRadius: 3, cursor: "pointer" }}
+          >
             <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1, alignItems: "center" }}>
               <Typography sx={{ color: "#003264", fontWeight: 600, minWidth: 0 }}>
                 <HighlightMatch text={user.firstName} query={debounced} /> <HighlightMatch text={user.lastName} query={debounced} />

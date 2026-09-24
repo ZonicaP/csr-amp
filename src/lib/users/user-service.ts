@@ -4,7 +4,7 @@ import { currentCsr, CsrError } from "@/lib/csr/csr-service";
 import { hasPermission } from "@/lib/csr/permissions";
 import { phoneDigits, searchTokens, type UserListItem } from "@/lib/users/user-list";
 
-export const USER_PAGE_SIZE = 20;
+export const USER_PAGE_SIZE = 10;
 
 export type { UserListItem };
 
@@ -98,4 +98,46 @@ async function listApproximateUsers(tokens: string[], page: number) {
     return queryUserPage(tx, approximateWhere(tokens), page);
   });
   return { ...pageResult, page, pageSize: USER_PAGE_SIZE, approximate: pageResult.total > 0 };
+}
+
+const customerSelect = {
+  id: true,
+  membershipId: true,
+  firstName: true,
+  lastName: true,
+  email: true,
+  phone: true,
+  status: true,
+  createdAt: true,
+  vehicles: {
+    orderBy: { createdAt: "asc" as const },
+    select: {
+      id: true,
+      licensePlate: true,
+      make: true,
+      model: true,
+      year: true,
+      subscriptions: {
+        orderBy: { startedAt: "desc" as const },
+        select: { id: true, planName: true, status: true, startedAt: true },
+      },
+    },
+  },
+  purchases: {
+    orderBy: { purchasedAt: "desc" as const },
+    select: { id: true, description: true, amount: true, purchasedAt: true },
+  },
+  events: {
+    orderBy: { createdAt: "desc" as const },
+    take: 10,
+    select: { id: true, type: true, summary: true, createdAt: true },
+  },
+};
+
+export async function getCustomer(actorId: string, id: string) {
+  const actor = await currentCsr(actorId);
+  if (!hasPermission(actor.roles, "customers:read")) {
+    throw new CsrError("FORBIDDEN", "You do not have permission for this action");
+  }
+  return prisma.user.findUnique({ where: { id }, select: customerSelect });
 }
