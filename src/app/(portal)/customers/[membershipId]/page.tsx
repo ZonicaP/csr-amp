@@ -6,11 +6,12 @@ import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import AccountAction from "@/components/users/AccountAction";
+import AccountMenu from "@/components/users/AccountMenu";
 import SmartDebug from "@/components/users/SmartDebug";
 import VehicleCard from "@/components/users/VehicleCard";
 import { requireVerifiedCsr } from "@/lib/csr/guard";
 import { hasPermission } from "@/lib/csr/permissions";
-import { accountIssue, accountSnapshot, duplicateCharge } from "@/lib/debug/account-issue";
+import { accountIssue, accountSnapshot, duplicateCharge, type SuggestedAction } from "@/lib/debug/account-issue";
 import { getCustomer } from "@/lib/users/user-service";
 
 const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
@@ -40,6 +41,15 @@ export default async function CustomerPage({ params }: { params: Promise<{ membe
     [vehicle.year, vehicle.make, vehicle.model].filter(Boolean).join(" ") || "Vehicle";
   const snapshot = accountSnapshot(customer);
   const duplicate = duplicateCharge(snapshot);
+  const failedPayment = customer.purchases.find((purchase) => purchase.failureReason);
+  const menuActions: SuggestedAction[] = [
+    ...(failedPayment ? [{ type: "email-payment-link" as const, purchaseId: failedPayment.id }] : []),
+    ...(customer.status === "CANCELLED"
+      ? [{ type: "reactivate-membership" as const }]
+      : [{ type: "cancel-membership" as const }, { type: "offer-discount" as const }]),
+    ...customer.vehicles.map((vehicle) => ({ type: "email-plate-documents" as const, vehicleId: vehicle.id })),
+    ...(duplicate ? [{ type: "refund-charge" as const, purchaseId: duplicate.id }] : []),
+  ];
 
   return (
     <Box
@@ -70,7 +80,10 @@ export default async function CustomerPage({ params }: { params: Promise<{ membe
               />
             </Stack>
           </Box>
-            <SmartDebug membershipId={customer.membershipId} account={snapshot} issue={accountIssue(snapshot)} />
+            <Stack direction="row" spacing={1} sx={{ flexShrink: 0 }}>
+              <SmartDebug membershipId={customer.membershipId} account={snapshot} issue={accountIssue(snapshot)} />
+              <AccountMenu membershipId={customer.membershipId} actions={menuActions} />
+            </Stack>
         </Stack>
         <Paper elevation={0} sx={{ p: { xs: 1.5, md: 2 }, border: "1px solid #E5E7EB", borderRadius: 3 }}>
           <Typography>{customer.email}</Typography>

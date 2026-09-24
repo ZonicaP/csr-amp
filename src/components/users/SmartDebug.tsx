@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import IconButton from "@mui/material/IconButton";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
 import Chip from "@mui/material/Chip";
@@ -41,15 +42,21 @@ function IssueAction({
   membershipId,
   action,
   appearance = "link",
+  onCover,
+  onReveal,
+  onDone,
 }: {
   membershipId: string;
   action: SuggestedAction;
   appearance?: "link" | "button";
+  onCover?: () => void;
+  onReveal?: () => void;
+  onDone?: () => void;
 }) {
   if (action.type === "email-payment-link") {
     return <SendPaymentLink membershipId={membershipId} purchaseId={action.purchaseId} appearance={appearance} />;
   }
-  return <AccountAction membershipId={membershipId} action={action} appearance={appearance} />;
+  return <AccountAction membershipId={membershipId} action={action} appearance={appearance} onCover={onCover} onReveal={onReveal} onDone={onDone} />;
 }
 
 type DebugAnswer = {
@@ -66,6 +73,7 @@ export default function SmartDebug({ membershipId, issue, account }: { membershi
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [step, setStep] = useState<"ask" | "results">("ask");
+  const [covered, setCovered] = useState(false);
   const theme = useTheme();
   const mobile = useMediaQuery(theme.breakpoints.down("md"));
   const showAsk = !mobile || step === "ask";
@@ -97,18 +105,31 @@ export default function SmartDebug({ membershipId, issue, account }: { membershi
 
   return (
     <>
-      <Button
-        variant="outlined"
+      <IconButton
+        aria-label="Smart debug"
         onClick={() => {
           setStep("ask");
           setOpen(true);
         }}
-        sx={{ "&&": { minHeight: 36, py: "6px", px: 2, fontSize: 14 } }}
+        sx={{
+          width: 36,
+          height: 36,
+          color: "#181D27",
+          border: "1px solid #E5E7EB",
+          borderRadius: "40px",
+          "&&": { minWidth: 36, minHeight: 36, p: 0 },
+        }}
       >
-        Smart debug
-      </Button>
+        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            fill="currentColor"
+            d="M20 8h-2.81a6 6 0 0 0-1.82-1.96L17 4.41 15.59 3l-2.17 2.17A6 6 0 0 0 12 5c-.49 0-.96.06-1.41.17L8.41 3 7 4.41l1.62 1.63A6 6 0 0 0 6.81 8H4v2h2.09c-.05.33-.09.66-.09 1v1H4v2h2v1c0 .34.04.67.09 1H4v2h2.81A6 6 0 0 0 12 21a6 6 0 0 0 5.19-3H20v-2h-2.09c.05-.33.09-.66.09-1v-1h2v-2h-2v-1c0-.34-.04-.67-.09-1H20V8zm-6 8h-4v-2h4v2zm0-4h-4v-2h4v2z"
+          />
+        </svg>
+      </IconButton>
       <Dialog
-        open={open}
+        open={open && !covered}
+        keepMounted
         onClose={() => setOpen(false)}
         fullWidth
         maxWidth="sm"
@@ -185,7 +206,18 @@ export default function SmartDebug({ membershipId, issue, account }: { membershi
                 {reported.length > 0 ? (
                   <Stack direction="row" sx={{ flexWrap: "wrap", gap: 1 }}>
                     {reported.map((action) => (
-                      <IssueAction key={actionKey(action)} membershipId={membershipId} action={action} appearance="button" />
+                      <IssueAction
+                        key={actionKey(action)}
+                        membershipId={membershipId}
+                        action={action}
+                        appearance="button"
+                        onCover={() => setCovered(true)}
+                        onReveal={() => setCovered(false)}
+                        onDone={() => {
+                          setCovered(false);
+                          setOpen(false);
+                        }}
+                      />
                     ))}
                   </Stack>
                 ) : null}
