@@ -3,6 +3,8 @@
 import { useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import useMediaQuery from "@mui/material/useMediaQuery";
+import { useTheme } from "@mui/material/styles";
 import Chip from "@mui/material/Chip";
 import Dialog from "@mui/material/Dialog";
 import DialogContent from "@mui/material/DialogContent";
@@ -35,19 +37,19 @@ function actionKey(action: SuggestedAction) {
   return action.type;
 }
 
-function uniqueActions(actions: SuggestedAction[]) {
-  const seen = new Set<string>();
-  return actions.filter((action) => {
-    const key = actionKey(action);
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
-
-function IssueAction({ membershipId, action }: { membershipId: string; action: SuggestedAction }) {
-  if (action.type === "email-payment-link") return <SendPaymentLink membershipId={membershipId} purchaseId={action.purchaseId} />;
-  return <AccountAction membershipId={membershipId} action={action} />;
+function IssueAction({
+  membershipId,
+  action,
+  appearance = "link",
+}: {
+  membershipId: string;
+  action: SuggestedAction;
+  appearance?: "link" | "button";
+}) {
+  if (action.type === "email-payment-link") {
+    return <SendPaymentLink membershipId={membershipId} purchaseId={action.purchaseId} appearance={appearance} />;
+  }
+  return <AccountAction membershipId={membershipId} action={action} appearance={appearance} />;
 }
 
 type DebugAnswer = {
@@ -63,13 +65,18 @@ export default function SmartDebug({ membershipId, issue, account }: { membershi
   const [answer, setAnswer] = useState<DebugAnswer | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [step, setStep] = useState<"ask" | "results">("ask");
+  const theme = useTheme();
+  const mobile = useMediaQuery(theme.breakpoints.down("md"));
+  const showAsk = !mobile || step === "ask";
+  const showResults = !mobile || step === "results";
   const colors = barColor[issue.tone];
   const reported = actionsForQuestion(account, question);
-  const likelyActions = uniqueActions(question.trim() ? [...issue.actions, ...reported] : issue.actions);
 
   async function ask() {
     const text = question.trim();
     if (!text || pending) return;
+    setStep("results");
     setPending(true);
     setError(null);
     setAnswer(null);
@@ -92,7 +99,10 @@ export default function SmartDebug({ membershipId, issue, account }: { membershi
     <>
       <Button
         variant="outlined"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setStep("ask");
+          setOpen(true);
+        }}
         sx={{ "&&": { minHeight: 36, py: "6px", px: 2, fontSize: 14 } }}
       >
         Smart debug
@@ -119,6 +129,8 @@ export default function SmartDebug({ membershipId, issue, account }: { membershi
         <DialogTitle sx={{ color: "#003264", pb: 1 }}>Smart debug</DialogTitle>
         <DialogContent>
           <Stack spacing={1.5}>
+            {showAsk ? (
+              <>
             <TextField
               label="What is the customer reporting?"
               placeholder="Or pick a common issue below"
@@ -162,13 +174,18 @@ export default function SmartDebug({ membershipId, issue, account }: { membershi
             >
               {pending ? "Looking" : "Debug"}
             </Button>
-            {answer ? (
+              </>
+            ) : null}
+            {showResults && pending && !answer ? (
+              <Typography sx={{ color: "#717680", fontSize: 14 }}>Looking</Typography>
+            ) : null}
+            {showResults && answer ? (
               <Stack spacing={1} sx={{ pt: 0.5 }}>
                 <Typography sx={{ color: "#181D27", fontSize: 14 }}>{answer.summary}</Typography>
                 {reported.length > 0 ? (
                   <Stack direction="row" sx={{ flexWrap: "wrap", gap: 1 }}>
                     {reported.map((action) => (
-                      <IssueAction key={actionKey(action)} membershipId={membershipId} action={action} />
+                      <IssueAction key={actionKey(action)} membershipId={membershipId} action={action} appearance="button" />
                     ))}
                   </Stack>
                 ) : null}
@@ -180,7 +197,7 @@ export default function SmartDebug({ membershipId, issue, account }: { membershi
                 ))}
               </Stack>
             ) : null}
-            {error ? (
+            {showResults && error ? (
               <Typography sx={{ color: "#FA4362", fontSize: 14 }}>{error}</Typography>
             ) : null}
           </Stack>
@@ -203,9 +220,9 @@ export default function SmartDebug({ membershipId, issue, account }: { membershi
             <Typography sx={{ gridColumn: 1, gridRow: 1, color: colors.label, fontSize: 12, fontWeight: 700, letterSpacing: "0.04em" }}>
               MOST LIKELY
             </Typography>
-            {likelyActions.length > 0 ? (
+            {issue.actions.length > 0 ? (
               <Stack sx={{ gridColumn: 2, gridRow: { xs: 1, md: 2 }, alignItems: "flex-end", alignSelf: "center" }}>
-                {likelyActions.map((action) => (
+                {issue.actions.map((action) => (
                   <IssueAction key={actionKey(action)} membershipId={membershipId} action={action} />
                 ))}
               </Stack>
@@ -215,13 +232,24 @@ export default function SmartDebug({ membershipId, issue, account }: { membershi
               <Typography sx={{ color: "#717680", fontSize: 14 }}>{issue.detail}</Typography>
             </Box>
           </Box>
-          <Button
-            variant="outlined"
-            onClick={() => setOpen(false)}
-            sx={{ alignSelf: "flex-start", "&&": { minHeight: 36, py: "6px", px: 2, fontSize: 14 } }}
-          >
-            Close
-          </Button>
+          <Stack direction="row" sx={{ justifyContent: mobile && step === "results" ? "space-between" : "flex-end" }}>
+            {mobile && step === "results" ? (
+              <Button
+                variant="outlined"
+                onClick={() => setStep("ask")}
+                sx={{ "&&": { minHeight: 36, py: "6px", px: 2, fontSize: 14 } }}
+              >
+                Back
+              </Button>
+            ) : null}
+            <Button
+              variant="outlined"
+              onClick={() => setOpen(false)}
+              sx={{ "&&": { minHeight: 36, py: "6px", px: 2, fontSize: 14 } }}
+            >
+              Close
+            </Button>
+          </Stack>
         </Stack>
       </Dialog>
     </>
