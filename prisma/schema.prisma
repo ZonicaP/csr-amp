@@ -88,6 +88,7 @@ enum CustomerEventType {
   ACCOUNT_OVERDUE
   PLAN_CANCELLED
   ACCOUNT_CANCELLED
+  ACCOUNT_UPDATED
 }
 
 model CustomerEvent {

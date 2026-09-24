@@ -6,9 +6,11 @@ import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import AccountAction from "@/components/users/AccountAction";
+import EditAccount from "@/components/users/EditAccount";
 import AccountMenu from "@/components/users/AccountMenu";
 import SmartDebug from "@/components/users/SmartDebug";
 import VehicleCard from "@/components/users/VehicleCard";
+import VehicleSubscriptions from "@/components/users/VehicleSubscriptions";
 import { requireVerifiedCsr } from "@/lib/csr/guard";
 import { hasPermission } from "@/lib/csr/permissions";
 import { accountIssue, accountSnapshot, duplicateCharge, type SuggestedAction } from "@/lib/debug/account-issue";
@@ -86,11 +88,22 @@ export default async function CustomerPage({ params }: { params: Promise<{ membe
             </Stack>
         </Stack>
         <Paper elevation={0} sx={{ p: { xs: 1.5, md: 2 }, border: "1px solid #E5E7EB", borderRadius: 3 }}>
-          <Typography>{customer.email}</Typography>
-          <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1, alignItems: "baseline" }}>
-            <Typography>{customer.phone ?? "No phone"}</Typography>
-            <Typography sx={{ flexShrink: 0, color: "#717680", fontSize: 14 }}>Joined {date.format(customer.createdAt)}</Typography>
+          <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1, alignItems: "flex-start" }}>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography>{customer.email}</Typography>
+              <Typography>{customer.phone ?? "No phone"}</Typography>
+            </Box>
+            {hasPermission(csr.roles, "customers:update") ? (
+              <EditAccount
+                membershipId={customer.membershipId}
+                firstName={customer.firstName}
+                lastName={customer.lastName}
+                email={customer.email}
+                phone={customer.phone}
+              />
+            ) : null}
           </Stack>
+          <Typography sx={{ color: "#717680", fontSize: 14 }}>Joined {date.format(customer.createdAt)}</Typography>
         </Paper>
         <Box>
           <Typography component="h2" sx={{ color: "#003264", fontWeight: 600, mb: 1 }}>
@@ -99,7 +112,7 @@ export default async function CustomerPage({ params }: { params: Promise<{ membe
           <Stack spacing={1}>
             {customer.vehicles.length === 0 ? <Typography>No vehicles on this account.</Typography> : null}
             {customer.vehicles.map((vehicle) => {
-              const plan = vehicle.subscriptions[0];
+              const plan = [...vehicle.subscriptions].sort((left, right) => left.startedAt.getTime() - right.startedAt.getTime())[0];
               const failed = customer.purchases.find((purchase) => purchase.failureReason);
               const paid = customer.purchases.find((purchase) => !purchase.failureReason);
               return (
@@ -132,6 +145,21 @@ export default async function CustomerPage({ params }: { params: Promise<{ membe
                     failed
                       ? { membershipId: customer.membershipId, purchaseId: failed.id }
                       : null
+                  }
+                  planEditor={
+                    <VehicleSubscriptions
+                      membershipId={customer.membershipId}
+                      vehicleId={vehicle.id}
+                      plans={vehicle.subscriptions.map((subscription) => ({
+                        id: subscription.id,
+                        name: subscription.planName,
+                        status: subscription.status,
+                        since: date.format(subscription.startedAt),
+                      }))}
+                      canAdd={hasPermission(csr.roles, "customers:update") && customer.status !== "CANCELLED"}
+                      canRemove={hasPermission(csr.roles, "subscriptions:cancel")}
+                      canTransfer={hasPermission(csr.roles, "subscriptions:transfer")}
+                    />
                   }
                   extra={
                     <Stack direction="row" sx={{ flexWrap: "wrap", pt: 1, borderTop: "1px solid #E5E7EB" }}>

@@ -26,6 +26,15 @@
 - If the exact search finds nobody, a close match runs on first name, last name, and email only. `brooks@exaple` returns the Brooks customers and the page says they are close matches. Phone numbers and membership ids stay exact. If the close match is also empty, the list stays empty.
 - The exact search and the close-match search each use one query that returns the page and the total together.
 - Clicking a customer opens their page: account, vehicles, the wash plan on each vehicle, and purchases. The plan on the vehicle is the membership. Account status and plan status were seeded separately, so a cancelled account can still show an active plan. That mismatch is mock data, not a product rule.
+- Customer URLs use the membership id, such as `/customers/AMP-10041`, not the database id. Payment history includes failed charges and the decline reason. The log leaves those payment lines out so it stays an account timeline.
+- Any email that should go to the customer goes to the signed-in CSR instead. The payment link, the 10% offer, the plate request, the refund notice, and the cancellation confirmation all follow that rule.
+- Smart debug sits on the customer page. The CSR types what the customer is reporting, or picks a common issue. A standing “most likely” bar comes from the account itself and does not wait on the model. Groq only writes the answer.
+- On a phone the debug dialog is two steps: the report, then the result. The standing bar stays on both, and Back returns to the report. The trigger is a bug icon, next to a menu icon for the same actions.
+- Actions show only when they apply. An outstanding payment offers the payment link. A cancellation report offers cancel and 10% off together. A cancelled membership offers reactivate. A wrong plate emails the documents needed. A refund appears only when two successful charges of the same amount landed within two days. The standing bar keeps one action. The written answer gets the actions for that report. The vehicle card and the actions menu get the ones that fit the account.
+- Cancel membership asks for a reason, then cancels the plans and the account and writes the reason on the log. Opened from Smart debug, that dialog hides Smart debug. Back brings it back. After it succeeds, the dialog says the membership was cancelled and the button becomes Close.
+- The plate email lists the photo, the registration, and proof of ownership as bullets, and asks for them by email with the subject `Plate update` plus the membership id. It does not link back into the portal.
+- Smart debug refuses questions that are not about this membership, including attempts to override its instructions. Each CSR can send 8 questions every 10 minutes. That count lives in the running server, so a restart starts a fresh window.
+- Sign out moved off the navbar and the sidebar onto `/profile`. The signed-in name opens that page.
 
 ## Core expectations
 

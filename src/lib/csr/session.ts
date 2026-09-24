@@ -41,11 +41,15 @@ export function decodeSession(token: string): SessionPayload | null {
   if (actualBuffer.length !== expectedBuffer.length || !timingSafeEqual(actualBuffer, expectedBuffer)) {
     return null;
   }
-  const payload = JSON.parse(Buffer.from(body, "base64url").toString()) as SessionPayload;
-  if (!payload.csrId || payload.exp < Math.floor(Date.now() / 1000)) {
+  try {
+    const payload = JSON.parse(Buffer.from(body, "base64url").toString()) as SessionPayload;
+    if (!payload?.csrId || typeof payload.exp !== "number" || payload.exp < Math.floor(Date.now() / 1000)) {
+      return null;
+    }
+    return payload;
+  } catch {
     return null;
   }
-  return payload;
 }
 
 export async function setSessionCookie(csrId: string): Promise<void> {

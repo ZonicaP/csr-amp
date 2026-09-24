@@ -32,10 +32,11 @@ export type VehicleCardDetails = {
   failure: { reason: string; amount: string; date: string } | null;
   lastPayment: { amount: string; date: string } | null;
   paymentLink: { membershipId: string; purchaseId: string } | null;
+  planEditor?: ReactNode;
   extra?: ReactNode;
 };
 
-export default function VehicleCard({ name, plate, since, plans, payment, failure, lastPayment, paymentLink, extra }: VehicleCardDetails) {
+export default function VehicleCard({ name, plate, since, plans, payment, failure, lastPayment, paymentLink, planEditor, extra }: VehicleCardDetails) {
   const [open, setOpen] = useState(false);
   const outstanding = payment === "outstanding";
 
@@ -128,13 +129,17 @@ export default function VehicleCard({ name, plate, since, plans, payment, failur
         </DialogTitle>
         <DialogContent>
           <Stack spacing={1} sx={{ pb: { xs: "max(16px, env(safe-area-inset-bottom))", md: 1 } }}>
-            {plans.length === 0 ? <Typography>No membership on this vehicle.</Typography> : null}
-            {plans.map((plan) => (
-              <Typography key={plan.id}>
-                {plan.name}
-                {since ? ` since ${since}` : ""}
-              </Typography>
-            ))}
+            {planEditor ?? (
+              <>
+                {plans.length === 0 ? <Typography>No membership on this vehicle.</Typography> : null}
+                {plans.map((plan) => (
+                  <Typography key={plan.id}>
+                    {plan.name}
+                    {since ? ` since ${since}` : ""}
+                  </Typography>
+                ))}
+              </>
+            )}
             {payment === "up-to-date" ? (
               <Typography sx={{ pt: 1, borderTop: "1px solid #E5E7EB", color: "#11B76B", fontWeight: 600 }}>
                 Up to date

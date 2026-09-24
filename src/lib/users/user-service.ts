@@ -2,6 +2,9 @@ import { CustomerEventType, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { currentCsr, CsrError } from "@/lib/csr/csr-service";
 import { hasPermission } from "@/lib/csr/permissions";
+import { AccountUpdateEmail } from "@/lib/email/account-update-email";
+import { appUrl, createEmailService } from "@/lib/email/email-service";
+import { accountDetailChanges, parseAccountDetails, type AccountDetails } from "@/lib/users/account-details";
 import { phoneDigits, searchTokens, type UserListItem } from "@/lib/users/user-list";
 
 export const USER_PAGE_SIZE = 10;
@@ -165,6 +168,39 @@ export async function paymentRequest(actorId: string, membershipId: string, purc
     amount: money.format(Number(purchase.amount)),
     reason: purchase.failureReason,
   };
+}
+
+export async function updateCustomerDetails(actorId: string, membershipId: string, input: { firstName: string; lastName: string; email: string; phone: string }) {
+  const actor = await currentCsr(actorId);
+  if (!hasPermission(actor.roles, "customers:update")) {
+    throw new CsrError("FORBIDDEN", "You do not have permission for this action");
+  }
+  const parsed = parseAccountDetails(input);
+  if ("error" in parsed) throw new CsrError("INVALID", parsed.error);
+  const customer = await prisma.user.findFirst({
+    where: { membershipId: { equals: membershipId, mode: "insensitive" } },
+    select: { id: true, membershipId: true, firstName: true, lastName: true, email: true, phone: true },
+  });
+  if (!customer) throw new CsrError("NOT_FOUND", "That customer could not be found");
+  const next: AccountDetails = parsed.value;
+  const taken = await prisma.user.findFirst({
+    where: { email: { equals: next.email, mode: "insensitive" }, NOT: { id: customer.id } },
+    select: { id: true },
+  });
+  if (taken) throw new CsrError("CONFLICT", "That email is already on another membership");
+  const changes = accountDetailChanges(customer, next);
+  if (changes.length === 0) return;
+  const summary = `Account details updated by CSR. ${changes.join(" ")}`.slice(0, 500);
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: customer.id }, data: next }),
+    prisma.customerEvent.create({
+      data: { userId: customer.id, type: "ACCOUNT_UPDATED", summary, createdAt: new Date() },
+    }),
+  ]);
+  await createEmailService().send(
+    actor.email,
+    new AccountUpdateEmail(appUrl(), next.firstName, customer.membershipId, changes),
+  );
 }
 
 export async function publicPaymentDue(membershipId: string) {
