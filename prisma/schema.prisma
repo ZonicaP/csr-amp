@@ -33,6 +33,7 @@ model User {
   updatedAt DateTime      @updatedAt
   vehicles  Vehicle[]
   purchases Purchase[]
+  events    CustomerEvent[]
 
   @@index([lastName, firstName])
   @@index([firstName(ops: raw("gin_trgm_ops"))], type: Gin, map: "User_firstName_trgm_idx")
@@ -76,6 +77,27 @@ model Purchase {
   amount      Decimal  @db.Decimal(10, 2)
   purchasedAt DateTime @default(now())
   createdAt   DateTime @default(now())
+}
+
+enum CustomerEventType {
+  ACCOUNT_OPENED
+  PLAN_STARTED
+  PAYMENT_RECEIVED
+  PAYMENT_FAILED
+  ACCOUNT_OVERDUE
+  PLAN_CANCELLED
+  ACCOUNT_CANCELLED
+}
+
+model CustomerEvent {
+  id        String            @id @default(cuid())
+  userId    String
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      CustomerEventType
+  summary   String
+  createdAt DateTime
+
+  @@index([userId, createdAt])
 }
 
 enum CsrStatus {
