@@ -11,15 +11,15 @@ export default async function VerifyEmailPage({
   searchParams: Promise<{ token?: string }>;
 }) {
   const { token } = await searchParams;
+  const session = await readSession();
   if (token) {
     return (
-      <AuthShell title="Verify email" description="This confirms the address on your CSR account.">
+      <AuthShell title="Verify email" description="This confirms the address on your CSR account." showLogo={!session}>
         <VerifyEmailForm token={token} />
       </AuthShell>
     );
   }
 
-  const session = await readSession();
   if (!session) {
     redirect("/login");
   }
@@ -29,7 +29,7 @@ export default async function VerifyEmailPage({
   }
 
   return (
-    <AuthShell title="Verify your email" description="Your account stays limited until this address is confirmed.">
+    <AuthShell title="Verify your email" description="Your account stays limited until this address is confirmed." showLogo={false}>
       <AwaitingVerification email={csr.email} />
     </AuthShell>
   );
