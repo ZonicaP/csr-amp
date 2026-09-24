@@ -49,6 +49,7 @@ async function seedCustomers() {
         lastName,
         email: `${firstName}.${lastName}@example.com`.toLowerCase(),
         phone: `555-010-${String(index + 1).padStart(2, "0")}`,
+        membershipId: `AMP-${String(10001 + index)}`,
         status: statuses[index % statuses.length],
       };
     }),

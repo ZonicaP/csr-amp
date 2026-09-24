@@ -20,12 +20,15 @@ enum SubscriptionStatus {
 }
 
 model User {
-  id        String        @id @default(cuid())
-  firstName String
-  lastName  String
-  email     String        @unique
-  phone     String?
-  status    AccountStatus @default(ACTIVE)
+  id              String        @id @default(cuid())
+  membershipId    String        @unique
+  firstName       String
+  lastName        String
+  email           String        @unique
+  phone           String?
+  phoneDigits     String        @default(dbgenerated("regexp_replace(COALESCE(\"phone\", ''), '[^0-9]', '', 'g')"))
+  membershipIdKey String        @default(dbgenerated("regexp_replace(upper(\"membershipId\"), '[^A-Z0-9]', '', 'g')"))
+  status          AccountStatus @default(ACTIVE)
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
   vehicles  Vehicle[]
@@ -36,6 +39,9 @@ model User {
   @@index([lastName(ops: raw("gin_trgm_ops"))], type: Gin, map: "User_lastName_trgm_idx")
   @@index([email(ops: raw("gin_trgm_ops"))], type: Gin, map: "User_email_trgm_idx")
   @@index([phone(ops: raw("gin_trgm_ops"))], type: Gin, map: "User_phone_trgm_idx")
+  @@index([phoneDigits(ops: raw("gin_trgm_ops"))], type: Gin, map: "User_phoneDigits_trgm_idx")
+  @@index([membershipId(ops: raw("gin_trgm_ops"))], type: Gin, map: "User_membershipId_trgm_idx")
+  @@index([membershipIdKey(ops: raw("gin_trgm_ops"))], type: Gin, map: "User_membershipIdKey_trgm_idx")
 }
 
 model Vehicle {
