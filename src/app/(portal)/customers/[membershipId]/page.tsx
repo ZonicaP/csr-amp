@@ -64,10 +64,7 @@ export default async function CustomerPage({ params }: { params: Promise<{ membe
           />
         </Stack>
         <Paper elevation={0} sx={{ p: { xs: 1.5, md: 2 }, border: "1px solid #E5E7EB", borderRadius: 3 }}>
-          <Typography sx={{ display: { xs: "none", md: "block" }, color: "#717680", fontSize: 13, fontWeight: 600 }}>
-            Account
-          </Typography>
-          <Typography sx={{ mt: { xs: 0, md: 1 } }}>{customer.email}</Typography>
+          <Typography>{customer.email}</Typography>
           <Typography>{customer.phone ?? "No phone"}</Typography>
           <Typography sx={{ color: "#717680", fontSize: 14 }}>Customer since {date.format(customer.createdAt)}</Typography>
         </Paper>
