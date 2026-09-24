@@ -10,6 +10,7 @@ import DialogTitle from "@mui/material/DialogTitle";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
+import SendPaymentLink from "@/components/users/SendPaymentLink";
 
 const planColor = {
   ACTIVE: "success",
@@ -30,9 +31,10 @@ export type VehicleCardDetails = {
   payment: "up-to-date" | "outstanding" | null;
   failure: { reason: string; amount: string; date: string } | null;
   lastPayment: { amount: string; date: string } | null;
+  paymentLink: { membershipId: string; purchaseId: string } | null;
 };
 
-export default function VehicleCard({ name, plate, since, plans, payment, failure, lastPayment }: VehicleCardDetails) {
+export default function VehicleCard({ name, plate, since, plans, payment, failure, lastPayment, paymentLink }: VehicleCardDetails) {
   const [open, setOpen] = useState(false);
   const outstanding = payment === "outstanding";
 
@@ -115,10 +117,16 @@ export default function VehicleCard({ name, plate, since, plans, payment, failur
           },
         }}
       >
-        <DialogTitle sx={{ color: "#003264" }}>{name}</DialogTitle>
+        <DialogTitle sx={{ color: "#003264" }}>
+          <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1, alignItems: "baseline" }}>
+            <Box sx={{ minWidth: 0 }}>{name}</Box>
+            <Typography component="span" sx={{ flexShrink: 0, color: "#717680", fontSize: 14, fontWeight: 600 }}>
+              {plate ?? "No plate"}
+            </Typography>
+          </Stack>
+        </DialogTitle>
         <DialogContent>
           <Stack spacing={1} sx={{ pb: { xs: "max(16px, env(safe-area-inset-bottom))", md: 1 } }}>
-            <Typography>{plate ?? "No plate"}</Typography>
             {plans.length === 0 ? <Typography>No membership on this vehicle.</Typography> : null}
             {plans.map((plan) => (
               <Typography key={plan.id}>
@@ -133,7 +141,10 @@ export default function VehicleCard({ name, plate, since, plans, payment, failur
             ) : null}
             {outstanding ? (
               <Box sx={{ pt: 1.25, borderTop: "1px solid #E5E7EB" }}>
-                <Typography sx={{ color: "#C47F00", fontWeight: 700, fontSize: 14 }}>Payment outstanding</Typography>
+                <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1, alignItems: "center" }}>
+                  <Typography sx={{ color: "#C47F00", fontWeight: 700, fontSize: 14 }}>Payment outstanding</Typography>
+                  {paymentLink ? <SendPaymentLink membershipId={paymentLink.membershipId} purchaseId={paymentLink.purchaseId} /> : null}
+                </Stack>
                 {failure ? (
                   <Typography sx={{ color: "#717680", fontSize: 14 }}>
                     Declined {failure.amount} on {failure.date}. {failure.reason}

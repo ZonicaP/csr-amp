@@ -66,8 +66,10 @@ export default async function CustomerPage({ params }: { params: Promise<{ membe
         </Stack>
         <Paper elevation={0} sx={{ p: { xs: 1.5, md: 2 }, border: "1px solid #E5E7EB", borderRadius: 3 }}>
           <Typography>{customer.email}</Typography>
-          <Typography>{customer.phone ?? "No phone"}</Typography>
-          <Typography sx={{ color: "#717680", fontSize: 14 }}>Customer since {date.format(customer.createdAt)}</Typography>
+          <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1, alignItems: "baseline" }}>
+            <Typography>{customer.phone ?? "No phone"}</Typography>
+            <Typography sx={{ flexShrink: 0, color: "#717680", fontSize: 14 }}>Joined {date.format(customer.createdAt)}</Typography>
+          </Stack>
         </Paper>
         <Box>
           <Typography component="h2" sx={{ color: "#003264", fontWeight: 600, mb: 1 }}>
@@ -105,6 +107,11 @@ export default async function CustomerPage({ params }: { params: Promise<{ membe
                       ? { amount: money.format(Number(paid.amount)), date: date.format(paid.purchasedAt) }
                       : null
                   }
+                  paymentLink={
+                    failed
+                      ? { membershipId: customer.membershipId, purchaseId: failed.id }
+                      : null
+                  }
                 />
               );
             })}
@@ -118,17 +125,18 @@ export default async function CustomerPage({ params }: { params: Promise<{ membe
             {customer.purchases.length === 0 ? <Typography>No payments on this account.</Typography> : null}
             {customer.purchases.map((purchase) => (
               <Paper key={purchase.id} elevation={0} sx={{ px: 2, py: 1.25, border: "1px solid #E5E7EB", borderRadius: 3 }}>
-                <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1, alignItems: "flex-start" }}>
-                  <Box sx={{ minWidth: 0 }}>
-                    <Stack direction="row" sx={{ gap: 1, alignItems: "baseline", flexWrap: "wrap" }}>
-                      <Typography sx={{ fontWeight: 600 }}>{purchase.description}</Typography>
-                      <Typography sx={{ color: "#717680", fontSize: 14 }}>{date.format(purchase.purchasedAt)}</Typography>
+                <Stack spacing={0.25}>
+                  <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1, alignItems: "baseline" }}>
+                    <Stack direction="row" sx={{ gap: 1, alignItems: "baseline", flexWrap: "wrap", minWidth: 0 }}>
+                      <Typography sx={{ fontSize: 14 }}>{purchase.description}</Typography>
+                      <Typography sx={{ color: "#717680", fontSize: 14 }}>·</Typography>
+                      <Typography sx={{ color: "#717680", fontSize: 13 }}>{date.format(purchase.purchasedAt)}</Typography>
                     </Stack>
-                    {purchase.failureReason ? (
-                      <Typography sx={{ color: "#717680", fontSize: 14 }}>{purchase.failureReason}</Typography>
-                    ) : null}
-                  </Box>
-                  <Typography sx={{ flexShrink: 0, fontWeight: 600 }}>{money.format(Number(purchase.amount))}</Typography>
+                    <Typography sx={{ flexShrink: 0, color: "#717680", fontSize: 13 }}>{money.format(Number(purchase.amount))}</Typography>
+                  </Stack>
+                  {purchase.failureReason ? (
+                    <Typography sx={{ color: "#717680", fontSize: 14 }}>{purchase.failureReason}</Typography>
+                  ) : null}
                 </Stack>
               </Paper>
             ))}
