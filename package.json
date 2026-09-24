@@ -15,19 +15,22 @@
     "db:stop": "supabase stop",
     "db:deploy": "prisma migrate deploy",
     "db:seed": "prisma db seed",
-    "test": "node --experimental-strip-types --test src/lib/csr/permissions.test.ts src/lib/email/email.test.ts"
+    "test": "node --experimental-strip-types --test src/lib/csr/permissions.test.ts src/lib/email/email.test.ts src/lib/debug/account-issue.test.ts"
   },
   "dependencies": {
+    "@ai-sdk/groq": "^4.0.48",
     "@emotion/cache": "^11.14.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@mui/material": "^9.4.0",
     "@mui/material-nextjs": "^9.4.0",
     "@prisma/client": "^6.19.3",
+    "ai": "^7.0.114",
     "next": "16.3.6",
     "nodemailer": "^10.0.10",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "zod": "^4.6.5",
     "zustand": "^5.0.15"
   },
   "devDependencies": {

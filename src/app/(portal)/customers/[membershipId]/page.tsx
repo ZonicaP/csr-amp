@@ -5,9 +5,12 @@ import Chip from "@mui/material/Chip";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
+import AccountAction from "@/components/users/AccountAction";
+import SmartDebug from "@/components/users/SmartDebug";
 import VehicleCard from "@/components/users/VehicleCard";
 import { requireVerifiedCsr } from "@/lib/csr/guard";
 import { hasPermission } from "@/lib/csr/permissions";
+import { accountIssue, accountSnapshot, duplicateCharge } from "@/lib/debug/account-issue";
 import { getCustomer } from "@/lib/users/user-service";
 
 const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
@@ -35,6 +38,8 @@ export default async function CustomerPage({ params }: { params: Promise<{ membe
 
   const vehicleLabel = (vehicle: (typeof customer.vehicles)[number]) =>
     [vehicle.year, vehicle.make, vehicle.model].filter(Boolean).join(" ") || "Vehicle";
+  const snapshot = accountSnapshot(customer);
+  const duplicate = duplicateCharge(snapshot);
 
   return (
     <Box
@@ -56,13 +61,16 @@ export default async function CustomerPage({ params }: { params: Promise<{ membe
             <Typography component="h1" variant="h1">
               {customer.firstName} {customer.lastName}
             </Typography>
-            <Typography sx={{ mt: 0.5, color: "#003264", fontWeight: 600 }}>{customer.membershipId}</Typography>
+            <Stack direction="row" sx={{ mt: 0.5, gap: 1, alignItems: "center" }}>
+              <Typography sx={{ color: "#003264", fontWeight: 600 }}>{customer.membershipId}</Typography>
+              <Chip
+                size="small"
+                label={customer.status.charAt(0) + customer.status.slice(1).toLowerCase()}
+                color={statusColor[customer.status]}
+              />
+            </Stack>
           </Box>
-          <Chip
-            size="small"
-            label={customer.status.charAt(0) + customer.status.slice(1).toLowerCase()}
-            color={statusColor[customer.status]}
-          />
+            <SmartDebug membershipId={customer.membershipId} account={snapshot} issue={accountIssue(snapshot)} />
         </Stack>
         <Paper elevation={0} sx={{ p: { xs: 1.5, md: 2 }, border: "1px solid #E5E7EB", borderRadius: 3 }}>
           <Typography>{customer.email}</Typography>
@@ -112,6 +120,19 @@ export default async function CustomerPage({ params }: { params: Promise<{ membe
                       ? { membershipId: customer.membershipId, purchaseId: failed.id }
                       : null
                   }
+                  extra={
+                    <Stack direction="row" sx={{ flexWrap: "wrap", pt: 1, borderTop: "1px solid #E5E7EB" }}>
+                      {customer.status === "CANCELLED" ? (
+                        <AccountAction membershipId={customer.membershipId} action={{ type: "reactivate-membership" }} />
+                      ) : (
+                        <>
+                          <AccountAction membershipId={customer.membershipId} action={{ type: "cancel-membership" }} />
+                          <AccountAction membershipId={customer.membershipId} action={{ type: "offer-discount" }} />
+                        </>
+                      )}
+                      <AccountAction membershipId={customer.membershipId} action={{ type: "email-plate-documents", vehicleId: vehicle.id }} />
+                    </Stack>
+                  }
                 />
               );
             })}
@@ -123,7 +144,9 @@ export default async function CustomerPage({ params }: { params: Promise<{ membe
           </Typography>
           <Stack spacing={1}>
             {customer.purchases.length === 0 ? <Typography>No payments on this account.</Typography> : null}
-            {customer.purchases.map((purchase) => (
+            {customer.purchases.map((purchase) => {
+              const refund = duplicate?.id === purchase.id;
+              return (
               <Paper key={purchase.id} elevation={0} sx={{ px: 2, py: 1.25, border: "1px solid #E5E7EB", borderRadius: 3 }}>
                 <Stack spacing={0.25}>
                   <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1, alignItems: "baseline" }}>
@@ -137,9 +160,13 @@ export default async function CustomerPage({ params }: { params: Promise<{ membe
                   {purchase.failureReason ? (
                     <Typography sx={{ color: "#717680", fontSize: 14 }}>{purchase.failureReason}</Typography>
                   ) : null}
+                  {refund ? (
+                    <AccountAction membershipId={customer.membershipId} action={{ type: "refund-charge", purchaseId: purchase.id }} />
+                  ) : null}
                 </Stack>
               </Paper>
-            ))}
+              );
+            })}
           </Stack>
         </Box>
         <Box>
