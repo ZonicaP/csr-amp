@@ -54,8 +54,16 @@ const theme = createTheme({
     },
     MuiOutlinedInput: {
       styleOverrides: {
-        root: { borderRadius: 12, backgroundColor: "#FFFFFF" },
-        input: { fontSize: 16, padding: "14px 16px" },
+        root: {
+          borderRadius: 12,
+          backgroundColor: "#FFFFFF",
+          "&.MuiOutlinedInput-multiline": { alignItems: "flex-start", padding: "14px 16px" },
+        },
+        input: {
+          fontSize: 16,
+          padding: "14px 16px",
+          ".MuiOutlinedInput-multiline &": { padding: 0 },
+        },
       },
     },
     MuiInputLabel: {

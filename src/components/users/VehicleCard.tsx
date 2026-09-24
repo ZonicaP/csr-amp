@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
@@ -32,9 +32,10 @@ export type VehicleCardDetails = {
   failure: { reason: string; amount: string; date: string } | null;
   lastPayment: { amount: string; date: string } | null;
   paymentLink: { membershipId: string; purchaseId: string } | null;
+  extra?: ReactNode;
 };
 
-export default function VehicleCard({ name, plate, since, plans, payment, failure, lastPayment, paymentLink }: VehicleCardDetails) {
+export default function VehicleCard({ name, plate, since, plans, payment, failure, lastPayment, paymentLink, extra }: VehicleCardDetails) {
   const [open, setOpen] = useState(false);
   const outstanding = payment === "outstanding";
 
@@ -160,10 +161,11 @@ export default function VehicleCard({ name, plate, since, plans, payment, failur
                 </Typography>
               </Box>
             ) : null}
+            {extra}
             <Button
-              variant="contained"
+              variant="outlined"
               onClick={() => setOpen(false)}
-              sx={{ alignSelf: "flex-end", mt: 1, minHeight: 36, py: "6px", px: 2 }}
+              sx={{ alignSelf: "flex-start", mt: 1, "&&": { minHeight: 36, py: "6px", px: 2, fontSize: 14 } }}
             >
               Close
             </Button>
