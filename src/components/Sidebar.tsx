@@ -1,8 +1,7 @@
+import Link from "next/link";
 import Box from "@mui/material/Box";
-import Typography from "@mui/material/Typography";
 import BrandLink from "@/components/BrandLink";
 import SidebarNav from "@/components/SidebarNav";
-import SignOutButton from "@/components/SignOutButton";
 
 export default function Sidebar({ name }: { name: string }) {
   return (
@@ -27,10 +26,9 @@ export default function Sidebar({ name }: { name: string }) {
       <BrandLink width={120} />
       <SidebarNav />
       <Box sx={{ mt: "auto", pt: 3, display: "flex", flexDirection: "column", gap: 1.5 }}>
-        <Typography noWrap sx={{ color: "#717680", fontSize: 14, fontWeight: 500 }}>
+        <Link href="/profile" style={{ color: "#717680", fontSize: 14, fontWeight: 500, textDecoration: "none" }}>
           {name}
-        </Typography>
-        <SignOutButton />
+        </Link>
       </Box>
     </Box>
   );

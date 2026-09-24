@@ -89,17 +89,18 @@ export async function runAccountAction(actorId: string, membershipId: string, ac
     if (!hasPermission(actor.roles, "customers:update")) throw new CsrError("FORBIDDEN", "You do not have permission for this action");
     const vehicle = customer.vehicles.find((item) => item.id === action.vehicleId);
     if (!vehicle) throw new CsrError("NOT_FOUND", "That vehicle could not be found");
+    const documentSubject = `Plate update ${customer.membershipId}`;
     await mail.send(
       to,
       new NoticeEmail(
         appUrl(),
         `Documents to update plate ${vehicle.licensePlate ?? ""}`.trim(),
         "Update a license plate",
-        [
-          `Hi ${customer.firstName}, to change the plate on this membership we need a photo of the new plate, the vehicle registration, and proof the vehicle is yours.`,
-          "Send those three documents and we will update the plate.",
-        ],
+        [`Hi ${customer.firstName}, to change the plate on this membership we need:`],
         "This email is delivered to the signed-in CSR for this project.",
+        ["A photo of the new plate", "The vehicle registration", "Proof the vehicle is yours"],
+        [`Email those three documents to ${to} with the subject “${documentSubject}”.`],
+        false,
       ),
     );
     return;

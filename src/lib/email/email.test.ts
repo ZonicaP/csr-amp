@@ -3,6 +3,7 @@ import test from "node:test";
 import { AccountVerificationEmail } from "./account-verification-email.ts";
 import { InviteEmail } from "./invite-email.ts";
 import { PasswordResetEmail } from "./password-reset-email.ts";
+import { NoticeEmail } from "./notice-email.ts";
 import { PaymentRequestEmail } from "./payment-request-email.ts";
 
 test("invite email links to signup", () => {
@@ -35,6 +36,24 @@ test("payment email reads as an invoice", () => {
   assert.match(rendered.html, /Pay \$19\.99/);
   assert.match(rendered.html, /\/pay\/AMP-10041/);
   assert.match(rendered.text, /Total {2}\$19\.99/);
+});
+
+test("plate email lists the documents", () => {
+  const rendered = new NoticeEmail(
+    "http://localhost:3000",
+    "Documents to update plate AMP1040",
+    "Update a license plate",
+    ["Hi Amelia, to change the plate on this membership we need:"],
+    "This email is delivered to the signed-in CSR for this project.",
+    ["A photo of the new plate", "The vehicle registration", "Proof the vehicle is yours"],
+    ["Email those three documents to csr@example.com with the subject “Plate update AMP-10041”."],
+    false,
+  ).render();
+  assert.match(rendered.html, /<li[^>]*>A photo of the new plate<\/li>/);
+  assert.match(rendered.html, /csr@example.com/);
+  assert.match(rendered.html, /Plate update AMP-10041/);
+  assert.doesNotMatch(rendered.html, /Open the portal/);
+  assert.match(rendered.text, /• A photo of the new plate/);
 });
 
 test("reset email links to reset", () => {

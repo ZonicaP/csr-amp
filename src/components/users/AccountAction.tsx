@@ -24,10 +24,20 @@ export default function AccountAction({
   membershipId,
   action,
   appearance = "link",
+  onActivate,
+  onCover,
+  onReveal,
+  onDone,
+  textColor,
 }: {
   membershipId: string;
   action: Exclude<SuggestedAction, { type: "email-payment-link" }>;
   appearance?: "link" | "button";
+  onActivate?: () => void;
+  onCover?: () => void;
+  onReveal?: () => void;
+  onDone?: () => void;
+  textColor?: string;
 }) {
   const router = useRouter();
   const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
@@ -36,6 +46,7 @@ export default function AccountAction({
   const [message, setMessage] = useState<string | null>(null);
 
   async function run(event?: React.MouseEvent) {
+    onActivate?.();
     event?.stopPropagation();
     setState("sending");
     setMessage(null);
@@ -51,16 +62,32 @@ export default function AccountAction({
       return;
     }
     setState("sent");
-    setCancelOpen(false);
-    if (action.type === "cancel-membership" || action.type === "reactivate-membership") router.refresh();
+    if (action.type === "cancel-membership") {
+      router.refresh();
+      return;
+    }
+    if (action.type === "reactivate-membership") router.refresh();
   }
 
   function openCancel(event: React.MouseEvent) {
+    onActivate?.();
     event.stopPropagation();
     setReason("");
     setMessage(null);
     setState("idle");
     setCancelOpen(true);
+    onCover?.();
+  }
+
+  function reveal() {
+    if (state === "sending") return;
+    setCancelOpen(false);
+    onReveal?.();
+  }
+
+  function finish() {
+    setCancelOpen(false);
+    onDone?.();
   }
 
   const label = state === "sent" ? "Done" : state === "sending" ? "Sending" : state === "error" ? "Try again" : labels[action.type];
@@ -73,18 +100,16 @@ export default function AccountAction({
       disabled={state === "sending" || (state === "sent" && action.type !== "cancel-membership")}
       sx={
         appearance === "button"
-          ? { "&&": { minHeight: 36, py: "6px", px: 2, fontSize: 14 } }
-          : { "&&": { minHeight: 0, py: "2px", px: 1, fontSize: 14, fontWeight: 600, justifyContent: "flex-start" } }
+          ? { "&&": { minHeight: 36, py: "6px", px: 2, fontSize: 14, color: textColor } }
+          : { "&&": { minHeight: 0, py: "2px", px: 1, fontSize: 14, fontWeight: 600, justifyContent: "flex-start", color: textColor } }
       }
     >
       {label}
     </Button>
     {action.type === "cancel-membership" ? (
       <Dialog
-        open={prompt !== null}
-        onClose={() => {
-          if (state !== "sending") setPrompt(null);
-        }}
+        open={cancelOpen}
+        onClose={state === "sent" ? finish : reveal}
         fullWidth
         maxWidth="sm"
         sx={{
@@ -98,10 +123,14 @@ export default function AccountAction({
           "& .MuiDialogTitle-root + .MuiDialogContent-root": { pt: 2 },
         }}
       >
-        <DialogTitle sx={{ color: "#003264", pb: 1 }}>{prompt === "confirm" ? "Confirm cancellation" : "Cancel membership"}</DialogTitle>
+        <DialogTitle sx={{ color: "#003264", pb: 1 }}>{state === "sent" ? "Membership cancelled" : "Cancel membership"}</DialogTitle>
         <DialogContent>
           <Stack spacing={1.5} sx={{ pb: { xs: "max(16px, env(safe-area-inset-bottom))", md: 1 } }}>
-            {prompt === "reason" ? (
+            {state === "sent" ? (
+              <Typography sx={{ color: "#181D27", fontSize: 14 }}>
+                Membership {membershipId} has been cancelled. A confirmation email was sent.
+              </Typography>
+            ) : (
               <TextField
                 label="Reason for cancellation"
                 value={reason}
@@ -111,42 +140,28 @@ export default function AccountAction({
                 fullWidth
                 autoFocus
               />
-            ) : (
-              <Typography sx={{ color: "#181D27", fontSize: 14 }}>
-                Cancel {membershipId}. Reason: {reason.trim()}
-              </Typography>
             )}
             {message ? <Typography sx={{ color: "#FA4362", fontSize: 14 }}>{message}</Typography> : null}
             <Stack direction="row" sx={{ justifyContent: "space-between" }}>
-              {prompt === "confirm" ? (
-                <Button
-                  variant="outlined"
-                  onClick={() => setPrompt("reason")}
-                  disabled={state === "sending"}
-                  sx={{ "&&": { minHeight: 36, py: "6px", px: 2, fontSize: 14 } }}
-                >
+              {state !== "sent" && onReveal ? (
+                <Button variant="outlined" onClick={reveal} disabled={state === "sending"} sx={{ "&&": { minHeight: 36, py: "6px", px: 2, fontSize: 14 } }}>
                   Back
                 </Button>
               ) : (
                 <span />
               )}
-              {prompt === "reason" ? (
-                <Button
-                  variant="contained"
-                  onClick={() => setPrompt("confirm")}
-                  disabled={reason.trim().length === 0}
-                  sx={{ "&&": { minHeight: 36, py: "6px", px: 2, fontSize: 14 } }}
-                >
-                  Continue
+              {state === "sent" ? (
+                <Button variant="outlined" onClick={finish} sx={{ "&&": { minHeight: 36, py: "6px", px: 2, fontSize: 14 } }}>
+                  Close
                 </Button>
               ) : (
                 <Button
                   variant="contained"
                   onClick={() => run()}
-                  disabled={state === "sending"}
+                  disabled={state === "sending" || reason.trim().length === 0}
                   sx={{ "&&": { minHeight: 36, py: "6px", px: 2, fontSize: 14 } }}
                 >
-                  {state === "sending" ? "Cancelling" : "Confirm cancellation"}
+                  {state === "sending" ? "Cancelling" : "Cancel"}
                 </Button>
               )}
             </Stack>
