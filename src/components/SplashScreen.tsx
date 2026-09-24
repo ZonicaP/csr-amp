@@ -22,10 +22,10 @@ export default function SplashScreen({
     >
       <Image
         className={styles.logo}
-        src="/amp-logo.png"
+        src="/amp-logo-hires.png"
         alt="AMP"
-        width={447}
-        height={447}
+        width={368}
+        height={101}
         priority
       />
       {title ? <p className={styles.title}>{title}</p> : null}

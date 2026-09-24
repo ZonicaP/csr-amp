@@ -81,3 +81,25 @@ npm run db:deploy
 ```
 
 Do not commit `.env`.
+
+## CSR accounts
+
+CSRs do not sign themselves up. Seed the first admin, then that admin invites everyone else and assigns roles.
+
+Add these to `.env` as well:
+
+```bash
+AUTH_SECRET="replace-with-a-long-random-string"
+CSR_ADMIN_EMAIL="pietersen.zonica@gmail.com"
+CSR_ADMIN_PASSWORD="replace-with-at-least-8-characters"
+CSR_ADMIN_NAME="Zonica"
+CSR_ADMIN_SURNAME="Pietersen"
+```
+
+Then:
+
+```bash
+npm run db:seed
+```
+
+Sign in with `POST /api/auth/session` using that email and password. Invite another CSR with `POST /api/csrs`. The response includes a one-time invite token. The invited person activates the account with `POST /api/invites/accept`.

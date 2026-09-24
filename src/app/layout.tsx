@@ -1,14 +1,8 @@
 import type { Metadata, Viewport } from "next";
-import { Manrope } from "next/font/google";
 import SplashGate from "@/components/SplashGate";
 import ThemeRegistry from "@/components/ThemeRegistry";
+import { manrope } from "@/lib/manrope";
 import "./globals.css";
-
-const manrope = Manrope({
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--font-manrope",
-});
 
 export const metadata: Metadata = {
   title: "CSR Portal",
