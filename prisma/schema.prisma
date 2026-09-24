@@ -1,0 +1,67 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum AccountStatus {
+  ACTIVE
+  OVERDUE
+  CANCELLED
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+}
+
+model User {
+  id        String        @id @default(cuid())
+  firstName String
+  lastName  String
+  email     String        @unique
+  phone     String?
+  status    AccountStatus @default(ACTIVE)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  vehicles  Vehicle[]
+  purchases Purchase[]
+}
+
+model Vehicle {
+  id            String         @id @default(cuid())
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  licensePlate  String?
+  make          String?
+  model         String?
+  year          Int?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id        String             @id @default(cuid())
+  vehicleId String
+  vehicle   Vehicle            @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  planName  String
+  status    SubscriptionStatus @default(ACTIVE)
+  startedAt DateTime           @default(now())
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+}
+
+model Purchase {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  description String
+  amount      Decimal  @db.Decimal(10, 2)
+  purchasedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+}
