@@ -2,3 +2,5 @@
 
 - Used Grok 4.7 to set up a blank project with this stack: Next.js, Material UI, PostgreSQL, Vercel, Supabase, Prisma models, REST.
 - Deciding factors: quick setup, MCP connections with Supabase and Vercel, and Next.js server rendering.
+- Set up skill files: the Vercel React best practices skill, and a skill file for the theme built from the AMP Memberships website.
+- Set up the needed scripts in package.json: start the local database and apply migrations, create local migrations, reset the local database, stop it, and deploy migrations to the hosted database.
