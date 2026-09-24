@@ -1,6 +1,7 @@
 export type EmailContent = {
   heading: string;
   paragraphs: string[];
+  invoice?: { description: string; amount: string };
   actionLabel: string;
   actionUrl: string;
   footnote: string;
@@ -27,6 +28,18 @@ function layout(content: EmailContent) {
         `<p style="margin:0 0 16px;color:#717680;font-size:16px;line-height:1.5;">${escapeHtml(paragraph)}</p>`,
     )
     .join("");
+  const invoice = content.invoice
+    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;border-top:1px solid #E5E7EB;font-family:Manrope,system-ui,sans-serif;">
+        <tr>
+          <td style="padding:14px 0;color:#181D27;font-size:16px;">${escapeHtml(content.invoice.description)}</td>
+          <td align="right" style="padding:14px 0;color:#181D27;font-size:16px;">${escapeHtml(content.invoice.amount)}</td>
+        </tr>
+        <tr>
+          <td style="padding:14px 0;border-top:1px solid #E5E7EB;color:#003264;font-size:16px;font-weight:700;">Total</td>
+          <td align="right" style="padding:14px 0;border-top:1px solid #E5E7EB;color:#003264;font-size:16px;font-weight:700;">${escapeHtml(content.invoice.amount)}</td>
+        </tr>
+      </table>`
+    : "";
   const logo = "cid:amp-logo";
   return `<!DOCTYPE html>
 <html lang="en">
@@ -39,7 +52,7 @@ function layout(content: EmailContent) {
               <td>
                 <img src="${logo}" alt="AMP" width="168" style="display:block;width:168px;height:auto;border:0;" />
                 <h1 style="margin:28px 0 12px;color:#003264;font-size:32px;font-weight:300;line-height:1.2;letter-spacing:-0.02em;font-family:Manrope,system-ui,sans-serif;">${escapeHtml(content.heading)}</h1>
-                <div style="font-family:Manrope,system-ui,sans-serif;">${paragraphs}</div>
+                <div style="font-family:Manrope,system-ui,sans-serif;">${paragraphs}${invoice}</div>
                 <table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 20px;">
                   <tr>
                     <td align="center" bgcolor="#0B75E1" style="border-radius:40px;">
@@ -71,7 +84,8 @@ export abstract class Email {
 
   render(): RenderedEmail {
     const content = this.content();
-    const text = [content.heading, ...content.paragraphs, `${content.actionLabel}: ${content.actionUrl}`, content.footnote].join("\n\n");
+    const invoiceText = content.invoice ? [`${content.invoice.description}  ${content.invoice.amount}`, `Total  ${content.invoice.amount}`] : [];
+    const text = [content.heading, ...content.paragraphs, ...invoiceText, `${content.actionLabel}: ${content.actionUrl}`, content.footnote].join("\n\n");
     return { subject: this.subject, html: layout(content), text };
   }
 }

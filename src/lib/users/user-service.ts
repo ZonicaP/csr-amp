@@ -128,11 +128,66 @@ const customerSelect = {
     select: { id: true, description: true, amount: true, failureReason: true, purchasedAt: true },
   },
   events: {
+    where: { type: { notIn: ["PAYMENT_RECEIVED", "PAYMENT_FAILED"] } },
     orderBy: { createdAt: "desc" as const },
     take: 10,
     select: { id: true, type: true, summary: true, createdAt: true },
   },
 };
+
+const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+
+export async function paymentRequest(actorId: string, membershipId: string, purchaseId: string) {
+  const actor = await currentCsr(actorId);
+  if (!hasPermission(actor.roles, "customers:read")) {
+    throw new CsrError("FORBIDDEN", "You do not have permission for this action");
+  }
+  const customer = await prisma.user.findFirst({
+    where: { membershipId: { equals: membershipId, mode: "insensitive" } },
+    select: {
+      firstName: true,
+      membershipId: true,
+      vehicles: { orderBy: { createdAt: "asc" }, take: 1, select: { year: true, make: true, model: true } },
+      purchases: { where: { id: purchaseId, failureReason: { not: null } }, select: { description: true, amount: true, failureReason: true } },
+    },
+  });
+  const purchase = customer?.purchases[0];
+  if (!customer || !purchase?.failureReason) {
+    throw new CsrError("NOT_FOUND", "That failed payment could not be found");
+  }
+  const vehicle = customer.vehicles[0];
+  const vehicleName = vehicle ? [vehicle.year, vehicle.make, vehicle.model].filter(Boolean).join(" ") : "";
+  return {
+    to: actor.email,
+    name: customer.firstName,
+    membershipId: customer.membershipId,
+    description: vehicleName ? `${purchase.description} on ${vehicleName}` : purchase.description,
+    amount: money.format(Number(purchase.amount)),
+    reason: purchase.failureReason,
+  };
+}
+
+export async function publicPaymentDue(membershipId: string) {
+  const customer = await prisma.user.findFirst({
+    where: { membershipId: { equals: membershipId, mode: "insensitive" }, status: "OVERDUE" },
+    select: {
+      firstName: true,
+      membershipId: true,
+      vehicles: { orderBy: { createdAt: "asc" }, take: 1, select: { year: true, make: true, model: true } },
+      purchases: { where: { failureReason: { not: null } }, orderBy: { purchasedAt: "desc" }, take: 1, select: { description: true, amount: true } },
+    },
+  });
+  const purchase = customer?.purchases[0];
+  if (!customer || !purchase) return null;
+  const vehicle = customer.vehicles[0];
+  const vehicleName = vehicle ? [vehicle.year, vehicle.make, vehicle.model].filter(Boolean).join(" ") : "";
+  return {
+    name: customer.firstName,
+    membershipId: customer.membershipId,
+    description: vehicleName ? `${purchase.description} on ${vehicleName}` : purchase.description,
+    amount: money.format(Number(purchase.amount)),
+  };
+}
 
 export async function getCustomer(actorId: string, membershipId: string) {
   const actor = await currentCsr(actorId);
