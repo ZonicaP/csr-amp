@@ -14,7 +14,7 @@ async function customerFor(membershipId: string) {
       firstName: true,
       membershipId: true,
       status: true,
-      vehicles: { orderBy: { createdAt: "asc" }, select: { id: true, licensePlate: true, subscriptions: { select: { id: true, status: true, planName: true } } } },
+      vehicles: { orderBy: { createdAt: "asc" }, select: { id: true, subscriptions: { select: { id: true, status: true, planName: true } } } },
       purchases: { orderBy: { purchasedAt: "desc" }, select: { id: true, description: true, amount: true, failureReason: true, purchasedAt: true } },
     },
   });
@@ -107,14 +107,12 @@ export async function runAccountAction(
 
   if (action.type === "email-plate-documents") {
     if (!hasPermission(actor.roles, "customers:update")) throw new CsrError("FORBIDDEN", "You do not have permission for this action");
-    const vehicle = customer.vehicles.find((item) => item.id === action.vehicleId);
-    if (!vehicle) throw new CsrError("NOT_FOUND", "That vehicle could not be found");
     const documentSubject = `Plate update ${customer.membershipId}`;
     await mail.send(
       to,
       new NoticeEmail(
         appUrl(),
-        `Documents to update plate ${vehicle.licensePlate ?? ""}`.trim(),
+        "Documents to update a license plate",
         "Update a license plate",
         [`Hi ${customer.firstName}, to change the plate on this membership we need:`],
         "This email is delivered to the signed-in CSR for this project.",

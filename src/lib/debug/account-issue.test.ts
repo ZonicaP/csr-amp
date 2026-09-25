@@ -99,7 +99,7 @@ describe("account issue", () => {
 
   it("asks for plate documents when the plate is wrong", () => {
     assert.deepEqual(actionsForQuestion(customer("ACTIVE"), "Wrong plate or vehicle"), [
-      { type: "email-plate-documents", vehicleId: "vehicle-1" },
+      { type: "email-plate-documents" },
     ]);
   });
 });

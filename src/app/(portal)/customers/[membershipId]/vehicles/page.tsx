@@ -1,6 +1,5 @@
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import AccountAction from "@/components/users/AccountAction";
 import PlateField from "@/components/users/PlateField";
 import VehicleCard from "@/components/users/VehicleCard";
 import VehicleSubscriptions from "@/components/users/VehicleSubscriptions";
@@ -23,8 +22,8 @@ export default async function CustomerVehiclesPage({ params }: { params: Promise
       {customer.vehicles.length === 0 ? <Typography>No vehicles on this account.</Typography> : null}
       {customer.vehicles.map((vehicle) => {
         const plan = [...vehicle.subscriptions].sort((left, right) => left.startedAt.getTime() - right.startedAt.getTime())[0];
-        const failed = customer.purchases.find((purchase) => purchase.failureReason);
-        const paid = customer.purchases.find((purchase) => !purchase.failureReason);
+        const vehiclePurchases = customer.purchases.filter((purchase) => purchase.vehicleId === vehicle.id);
+        const failed = vehiclePurchases.find((purchase) => purchase.failureReason);
         return (
           <VehicleCard
             key={vehicle.id}
@@ -36,26 +35,19 @@ export default async function CustomerVehiclesPage({ params }: { params: Promise
               name: subscription.planName,
               status: subscription.status,
             }))}
-            payment={!plan || customer.status === "CANCELLED" ? null : customer.status === "OVERDUE" ? "outstanding" : "up-to-date"}
-            failure={
-              failed?.failureReason
-                ? {
-                    reason: failed.failureReason,
-                    amount: money.format(Number(failed.amount)),
-                    date: date.format(failed.purchasedAt),
-                  }
-                : null
-            }
-            lastPayment={
-              paid
-                ? { amount: money.format(Number(paid.amount)), date: date.format(paid.purchasedAt) }
-                : null
-            }
+            payment={!plan || customer.status === "CANCELLED" ? null : failed ? "outstanding" : "up-to-date"}
             paymentLink={
               failed
                 ? { membershipId: customer.membershipId, purchaseId: failed.id }
                 : null
             }
+            payments={vehiclePurchases.map((purchase) => ({
+              id: purchase.id,
+              description: purchase.description,
+              amount: money.format(Number(purchase.amount)),
+              date: date.format(purchase.purchasedAt),
+              failureReason: purchase.failureReason,
+            }))}
             plateEditor={
               hasPermission(csr.roles, "customers:update") ? (
                 <PlateField membershipId={customer.membershipId} vehicleId={vehicle.id} plate={vehicle.licensePlate} />
@@ -76,7 +68,6 @@ export default async function CustomerVehiclesPage({ params }: { params: Promise
                 canTransfer={hasPermission(csr.roles, "subscriptions:transfer")}
               />
             }
-            extra={<AccountAction membershipId={customer.membershipId} action={{ type: "email-plate-documents", vehicleId: vehicle.id }} appearance="button" />}
           />
         );
       })}

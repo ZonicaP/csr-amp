@@ -8,7 +8,7 @@ export type SuggestedAction =
   | { type: "reactivate-membership" }
   | { type: "cancel-membership" }
   | { type: "offer-discount" }
-  | { type: "email-plate-documents"; vehicleId: string }
+  | { type: "email-plate-documents" }
   | { type: "refund-charge"; purchaseId: string };
 
 export type AccountIssue = {
@@ -140,15 +140,14 @@ export function actionsForQuestion(account: AccountSnapshot, question: string): 
   const actions: SuggestedAction[] = [];
   const failed = account.payments.find((payment) => payment.failureReason);
   const duplicate = duplicateCharge(account);
-  const vehicle = account.vehicles[0];
   if (/cancel/.test(text) && account.status !== "CANCELLED") {
     actions.push({ type: "cancel-membership" }, { type: "offer-discount" });
   }
   if (/reactivat|plate|vehicle/.test(text) && account.status === "CANCELLED") {
     actions.push({ type: "reactivate-membership" });
   }
-  if (/plate|vehicle number|wrong vehicle/.test(text) && vehicle) {
-    actions.push({ type: "email-plate-documents", vehicleId: vehicle.id });
+  if (/plate|vehicle number|wrong vehicle/.test(text)) {
+    actions.push({ type: "email-plate-documents" });
   }
   if (/twice|double charge|refund/.test(text) && duplicate) {
     actions.push({ type: "refund-charge", purchaseId: duplicate.id });
