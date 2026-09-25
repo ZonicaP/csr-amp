@@ -46,7 +46,7 @@ export default function CustomerChrome({
 }) {
   const pathname = usePathname();
   const base = `/customers/${encodeURIComponent(membershipId)}`;
-  const tabs = [
+  const tabs: { href: string; label: keyof typeof tabIcons; match: boolean }[] = [
     { href: base, label: "Info", match: pathname === base },
     { href: `${base}/vehicles`, label: "Vehicles", match: pathname.startsWith(`${base}/vehicles`) },
     { href: `${base}/payments`, label: "Payments", match: pathname.startsWith(`${base}/payments`) },
