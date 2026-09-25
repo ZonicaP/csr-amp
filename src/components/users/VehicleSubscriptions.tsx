@@ -3,9 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Button from "@mui/material/Button";
-import Dialog from "@mui/material/Dialog";
-import DialogContent from "@mui/material/DialogContent";
-import DialogTitle from "@mui/material/DialogTitle";
 import MenuItem from "@mui/material/MenuItem";
 import StatusBadge from "@/components/StatusBadge";
 import Stack from "@mui/material/Stack";
@@ -15,16 +12,6 @@ import { plansAvailableToAdd, type WashPlan } from "@/lib/users/wash-plans";
 
 const smallButton = { "&&": { minHeight: 36, py: "6px", px: 2, fontSize: 14 } };
 const textButton = { "&&": { minHeight: 0, py: "2px", px: 1, fontSize: 14, fontWeight: 600, color: "#181D27" } };
-const sheet = {
-  "& .MuiDialog-container": { alignItems: { xs: "flex-end", md: "center" } },
-  "& .MuiDialog-paper": {
-    m: { xs: 0, md: 4 },
-    width: { xs: "100%", md: "calc(100% - 64px)" },
-    maxWidth: { xs: "100%", md: 444 },
-    borderRadius: { xs: "16px 16px 0 0", md: 2 },
-  },
-  "& .MuiDialogTitle-root + .MuiDialogContent-root": { pt: 2 },
-};
 
 type Plan = { id: string; name: string; status: "ACTIVE" | "CANCELLED"; since: string };
 type Destination = { id: string; label: string };
@@ -66,8 +53,10 @@ export default function VehicleSubscriptions({
   const [destinationVehicleId, setDestinationVehicleId] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [historyOpen, setHistoryOpen] = useState(false);
-  const current = plans[0];
+  const current = plans.find((plan) => plan.status === "ACTIVE");
+  const history = plans.filter((plan) => plan.status !== "ACTIVE");
+  const planLabel = plans.some((plan) => plan.status === "ACTIVE") ? "Change plan" : "Add plan";
+  const selectedPlan = available.includes(planName as WashPlan) ? planName : available[0];
 
   async function submit(body: Record<string, string>) {
     setBusy(true);
@@ -110,12 +99,9 @@ export default function VehicleSubscriptions({
 
   return (
     <Stack spacing={1.25} sx={{ pt: 0.5 }}>
-      {current ? (
-        <PlanSummary plan={current} />
-      ) : (
-        <Typography>No plan on this vehicle.</Typography>
-      )}
-      {current && current.status === "ACTIVE" && (canRemove || canTransfer) ? (
+      {current ? <PlanSummary plan={current} /> : null}
+      {!current && history.length === 0 ? <Typography>No plan on this vehicle.</Typography> : null}
+      {current && (canRemove || canTransfer) ? (
         confirmRemove === current.id ? (
           <Stack direction="row" sx={{ gap: 1, alignItems: "center", flexWrap: "wrap" }}>
             <Typography sx={{ color: "#181D27", fontSize: 14 }}>Remove {current.name}?</Typography>
@@ -175,35 +161,25 @@ export default function VehicleSubscriptions({
           </Button>
         </Stack>
       ) : null}
-      {plans.length > 1 ? (
-        <Button variant="text" onClick={() => setHistoryOpen(true)} sx={{ alignSelf: "flex-end", "&&": { minHeight: 0, py: "2px", px: 0, fontSize: 14, fontWeight: 600, color: "#0B75E1" } }}>
-          View history
-        </Button>
+      {history.length > 0 ? (
+        <Stack spacing={1.25} sx={current ? { pt: 1.25, borderTop: "1px solid #E5E7EB" } : undefined}>
+          <Typography sx={{ color: "#717680", fontSize: 14, fontWeight: 600 }}>History</Typography>
+          {history.map((plan) => (
+            <PlanSummary key={plan.id} plan={plan} />
+          ))}
+        </Stack>
       ) : null}
-      <Dialog open={historyOpen} onClose={() => setHistoryOpen(false)} fullWidth maxWidth="xs" sx={sheet}>
-        <DialogTitle sx={{ color: "#003264" }}>Plan history</DialogTitle>
-        <DialogContent>
-          <Stack spacing={1.5} sx={{ pb: { xs: "max(16px, env(safe-area-inset-bottom))", md: 1 } }}>
-            {plans.map((plan) => (
-              <PlanSummary key={plan.id} plan={plan} />
-            ))}
-            <Button variant="outlined" onClick={() => setHistoryOpen(false)} sx={{ alignSelf: "flex-start", ...smallButton }}>
-              Back
-            </Button>
-          </Stack>
-        </DialogContent>
-      </Dialog>
       {canAdd && available.length > 0 ? (
-        <Stack spacing={1}>
-          <TextField select label="Plan" value={available.includes(planName as WashPlan) ? planName : available[0]} onChange={(event) => setPlanName(event.target.value as WashPlan)} fullWidth>
+        <Stack spacing={1} sx={{ pt: 1.25, borderTop: "1px solid #E5E7EB" }}>
+          <TextField select label="Plan" value={selectedPlan} onChange={(event) => setPlanName(event.target.value as WashPlan)} fullWidth>
             {available.map((plan) => (
               <MenuItem key={plan} value={plan}>
                 {plan}
               </MenuItem>
             ))}
           </TextField>
-          <Button variant="contained" disabled={busy} onClick={() => submit({ type: "add", vehicleId, planName: available.includes(planName as WashPlan) ? planName : available[0] })} sx={{ ...smallButton, alignSelf: "flex-end" }}>
-            {plans.some((plan) => plan.status === "ACTIVE") ? "Change plan" : "Add plan"}
+          <Button variant="contained" disabled={busy || !selectedPlan} onClick={() => submit({ type: "add", vehicleId, planName: selectedPlan })} sx={{ ...smallButton, alignSelf: "flex-end" }}>
+            {busy ? "Saving" : planLabel}
           </Button>
         </Stack>
       ) : null}

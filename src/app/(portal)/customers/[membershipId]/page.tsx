@@ -1,4 +1,3 @@
-import NextLink from "next/link";
 import { notFound, redirect } from "next/navigation";
 import Box from "@mui/material/Box";
 import Paper from "@mui/material/Paper";
@@ -10,6 +9,7 @@ import EditAccount from "@/components/users/EditAccount";
 import AccountMenu from "@/components/users/AccountMenu";
 import SmartDebug from "@/components/users/SmartDebug";
 import VehicleCard from "@/components/users/VehicleCard";
+import PlateField from "@/components/users/PlateField";
 import VehicleSubscriptions from "@/components/users/VehicleSubscriptions";
 import { requireVerifiedCsr } from "@/lib/csr/guard";
 import { hasPermission } from "@/lib/csr/permissions";
@@ -59,9 +59,6 @@ export default async function CustomerPage({ params }: { params: Promise<{ membe
       }}
     >
       <Stack spacing={2} sx={{ width: "100%", maxWidth: 720, mx: "auto" }}>
-        <NextLink href="/customers" style={{ color: "#0B75E1", fontWeight: 600, textDecoration: "none" }}>
-          Customers
-        </NextLink>
         <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1, alignItems: "flex-start" }}>
           <Box sx={{ minWidth: 0 }}>
             <Typography component="h1" variant="h1">
@@ -136,6 +133,11 @@ export default async function CustomerPage({ params }: { params: Promise<{ membe
                       ? { membershipId: customer.membershipId, purchaseId: failed.id }
                       : null
                   }
+                  plateEditor={
+                    hasPermission(csr.roles, "customers:update") ? (
+                      <PlateField membershipId={customer.membershipId} vehicleId={vehicle.id} plate={vehicle.licensePlate} />
+                    ) : null
+                  }
                   planEditor={
                     <VehicleSubscriptions
                       membershipId={customer.membershipId}
@@ -152,7 +154,7 @@ export default async function CustomerPage({ params }: { params: Promise<{ membe
                     />
                   }
                   extra={
-                    <Stack direction="row" sx={{ flexWrap: "wrap", gap: 1, pt: 0.5 }}>
+                    <Stack direction="row" sx={{ flexWrap: "wrap", gap: 1 }}>
                       {customer.status === "CANCELLED" ? (
                         <AccountAction membershipId={customer.membershipId} action={{ type: "reactivate-membership" }} appearance="button" />
                       ) : null}

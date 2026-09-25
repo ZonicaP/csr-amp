@@ -5,6 +5,7 @@ import { hasPermission } from "@/lib/csr/permissions";
 import { AccountUpdateEmail } from "@/lib/email/account-update-email";
 import { appUrl, createEmailService } from "@/lib/email/email-service";
 import { accountDetailChanges, parseAccountDetails, type AccountDetails } from "@/lib/users/account-details";
+import { parsePlate } from "@/lib/users/plate";
 import { phoneDigits, searchTokens, type UserListItem } from "@/lib/users/user-list";
 
 export const USER_PAGE_SIZE = 10;
@@ -201,6 +202,33 @@ export async function updateCustomerDetails(actorId: string, membershipId: strin
     actor.email,
     new AccountUpdateEmail(appUrl(), next.firstName, customer.membershipId, changes),
   );
+}
+
+export async function updateVehiclePlate(actorId: string, membershipId: string, vehicleId: string, plate: string) {
+  const actor = await currentCsr(actorId);
+  if (!hasPermission(actor.roles, "customers:update")) {
+    throw new CsrError("FORBIDDEN", "You do not have permission for this action");
+  }
+  const parsed = parsePlate(plate);
+  if ("error" in parsed) throw new CsrError("INVALID", parsed.error);
+  const customer = await prisma.user.findFirst({
+    where: { membershipId: { equals: membershipId, mode: "insensitive" } },
+    select: {
+      id: true,
+      vehicles: { where: { id: vehicleId }, select: { id: true, year: true, make: true, model: true, licensePlate: true } },
+    },
+  });
+  const vehicle = customer?.vehicles[0];
+  if (!customer || !vehicle) throw new CsrError("NOT_FOUND", "That vehicle could not be found");
+  if (vehicle.licensePlate === parsed.value) return;
+  const label = [vehicle.year, vehicle.make, vehicle.model].filter(Boolean).join(" ") || "vehicle";
+  const summary = `Plate changed from ${vehicle.licensePlate ?? "none"} to ${parsed.value} on ${label}.`.slice(0, 500);
+  await prisma.$transaction([
+    prisma.vehicle.update({ where: { id: vehicle.id }, data: { licensePlate: parsed.value } }),
+    prisma.customerEvent.create({
+      data: { userId: customer.id, type: "ACCOUNT_UPDATED", summary, createdAt: new Date() },
+    }),
+  ]);
 }
 
 export async function publicPaymentDue(membershipId: string) {

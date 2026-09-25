@@ -1,6 +1,7 @@
 import { AccountStatus, CsrRoleName, CsrStatus } from "@prisma/client";
 import { prisma } from "../src/lib/prisma.ts";
 import { hashPassword } from "../src/lib/csr/password.ts";
+import { georgiaPlate } from "../src/lib/users/plate.ts";
 
 async function main() {
   const email = process.env.CSR_ADMIN_EMAIL?.toLowerCase();
@@ -89,7 +90,7 @@ async function seedCustomers() {
         make: car.make,
         model: car.model,
         year,
-        licensePlate: `AMP${String(1000 + index)}`,
+        licensePlate: georgiaPlate(index),
         subscriptions: {
           create: {
             planName: plan,
