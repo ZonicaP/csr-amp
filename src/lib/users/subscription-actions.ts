@@ -68,11 +68,16 @@ export async function runSubscriptionChange(actorId: string, membershipId: strin
     if (customer.status === "CANCELLED") throw new CsrError("CONFLICT", "Reactivate the membership before adding a plan");
     const vehicle = customer.vehicles.find((item) => item.id === action.vehicleId);
     if (!vehicle) throw new CsrError("NOT_FOUND", "That vehicle could not be found");
-    if (vehicle.subscriptions.some((plan) => plan.planName === action.planName && plan.status === "ACTIVE")) {
+    const current = vehicle.subscriptions.filter((plan) => plan.status === "ACTIVE");
+    if (current.some((plan) => plan.planName === action.planName)) {
       throw new CsrError("CONFLICT", "That plan is already on this vehicle");
     }
-    const summary = `${action.planName} added on ${vehicleLabel(vehicle)}.`;
+    const label = vehicleLabel(vehicle);
+    const summary = current.length
+      ? `${current.map((plan) => plan.planName).join(", ")} replaced by ${action.planName} on ${label}.`
+      : `${action.planName} added on ${label}.`;
     await prisma.$transaction([
+      ...current.map((plan) => prisma.subscription.update({ where: { id: plan.id }, data: { status: "CANCELLED" } })),
       prisma.subscription.create({ data: { vehicleId: vehicle.id, planName: action.planName, status: "ACTIVE", startedAt: new Date() } }),
       prisma.customerEvent.create({ data: { userId: customer.id, type: "PLAN_STARTED", summary, createdAt: new Date() } }),
     ]);

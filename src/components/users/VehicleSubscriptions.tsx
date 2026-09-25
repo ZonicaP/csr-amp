@@ -3,8 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Button from "@mui/material/Button";
-import Chip from "@mui/material/Chip";
+import Dialog from "@mui/material/Dialog";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
 import MenuItem from "@mui/material/MenuItem";
+import StatusBadge from "@/components/StatusBadge";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
@@ -12,9 +15,31 @@ import { plansAvailableToAdd, type WashPlan } from "@/lib/users/wash-plans";
 
 const smallButton = { "&&": { minHeight: 36, py: "6px", px: 2, fontSize: 14 } };
 const textButton = { "&&": { minHeight: 0, py: "2px", px: 1, fontSize: 14, fontWeight: 600, color: "#181D27" } };
+const sheet = {
+  "& .MuiDialog-container": { alignItems: { xs: "flex-end", md: "center" } },
+  "& .MuiDialog-paper": {
+    m: { xs: 0, md: 4 },
+    width: { xs: "100%", md: "calc(100% - 64px)" },
+    maxWidth: { xs: "100%", md: 444 },
+    borderRadius: { xs: "16px 16px 0 0", md: 2 },
+  },
+  "& .MuiDialogTitle-root + .MuiDialogContent-root": { pt: 2 },
+};
 
 type Plan = { id: string; name: string; status: "ACTIVE" | "CANCELLED"; since: string };
 type Destination = { id: string; label: string };
+
+function PlanSummary({ plan }: { plan: Plan }) {
+  return (
+    <Stack spacing={0.5}>
+      <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1, alignItems: "center" }}>
+        <Typography sx={{ color: "#003264", fontWeight: 600 }}>{plan.name}</Typography>
+        <StatusBadge status={plan.status} />
+      </Stack>
+      <Typography sx={{ color: "#717680", fontSize: 14 }}>Since {plan.since}</Typography>
+    </Stack>
+  );
+}
 
 export default function VehicleSubscriptions({
   membershipId,
@@ -41,6 +66,8 @@ export default function VehicleSubscriptions({
   const [destinationVehicleId, setDestinationVehicleId] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const current = plans[0];
 
   async function submit(body: Record<string, string>) {
     setBusy(true);
@@ -83,76 +110,89 @@ export default function VehicleSubscriptions({
 
   return (
     <Stack spacing={1.25} sx={{ pt: 0.5 }}>
-      {plans.length === 0 ? <Typography>No plan on this vehicle.</Typography> : null}
-      {plans.map((plan) => (
-        <Stack key={plan.id} spacing={0.5} sx={{ pb: 1, borderBottom: "1px solid #E5E7EB" }}>
-          <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1, alignItems: "center" }}>
-            <Typography sx={{ color: "#003264", fontWeight: 600 }}>{plan.name}</Typography>
-            <Chip size="small" label={plan.status === "ACTIVE" ? "Active" : "Cancelled"} color={plan.status === "ACTIVE" ? "success" : "default"} />
+      {current ? (
+        <PlanSummary plan={current} />
+      ) : (
+        <Typography>No plan on this vehicle.</Typography>
+      )}
+      {current && current.status === "ACTIVE" && (canRemove || canTransfer) ? (
+        confirmRemove === current.id ? (
+          <Stack direction="row" sx={{ gap: 1, alignItems: "center", flexWrap: "wrap" }}>
+            <Typography sx={{ color: "#181D27", fontSize: 14 }}>Remove {current.name}?</Typography>
+            <Button variant="contained" color="error" disabled={busy} onClick={() => submit({ type: "remove", subscriptionId: current.id })} sx={smallButton}>
+              Remove
+            </Button>
+            <Button variant="text" disabled={busy} onClick={() => setConfirmRemove(null)} sx={textButton}>
+              Back
+            </Button>
           </Stack>
-          <Typography sx={{ color: "#717680", fontSize: 14 }}>Since {plan.since}</Typography>
-          {plan.status === "ACTIVE" && (canRemove || canTransfer) ? (
-            confirmRemove === plan.id ? (
-              <Stack direction="row" sx={{ gap: 1, alignItems: "center", flexWrap: "wrap" }}>
-                <Typography sx={{ color: "#181D27", fontSize: 14 }}>Remove {plan.name}?</Typography>
-                <Button variant="contained" color="error" disabled={busy} onClick={() => submit({ type: "remove", subscriptionId: plan.id })} sx={smallButton}>
-                  Remove
-                </Button>
-                <Button variant="text" disabled={busy} onClick={() => setConfirmRemove(null)} sx={textButton}>
-                  Back
-                </Button>
-              </Stack>
-            ) : (
-              <Stack direction="row" sx={{ flexWrap: "wrap" }}>
-                {canRemove ? (
-                  <Button variant="text" disabled={busy} onClick={() => { setConfirmRemove(plan.id); setTransferId(null); setMessage(null); }} sx={textButton}>
-                    Remove
-                  </Button>
-                ) : null}
-                {canTransfer ? (
-                  <Button
-                    variant="text"
-                    disabled={busy}
-                    onClick={() => {
-                      setTransferId(plan.id);
-                      setConfirmRemove(null);
-                      setDestinationMembership(membershipId);
-                      setDestinations([]);
-                      setDestinationVehicleId("");
-                      setMessage(null);
-                    }}
-                    sx={textButton}
-                  >
-                    Transfer
-                  </Button>
-                ) : null}
-              </Stack>
-            )
-          ) : null}
-          {transferId === plan.id ? (
-            <Stack spacing={1}>
-              <TextField label="Membership" value={destinationMembership} onChange={(event) => setDestinationMembership(event.target.value.slice(0, 40))} fullWidth />
-              <Stack direction="row" sx={{ gap: 1 }}>
-                <Button variant="outlined" disabled={busy || destinationMembership.trim().length === 0} onClick={findVehicles} sx={smallButton}>
-                  Find vehicles
-                </Button>
-              </Stack>
-              {destinations.length > 0 ? (
-                <TextField select label="Vehicle" value={destinationVehicleId} onChange={(event) => setDestinationVehicleId(event.target.value)} fullWidth>
-                  {destinations.map((vehicle) => (
-                    <MenuItem key={vehicle.id} value={vehicle.id}>
-                      {vehicle.label}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              ) : null}
-              <Button variant="contained" disabled={busy || destinationVehicleId.length === 0} onClick={() => submit({ type: "transfer", subscriptionId: plan.id, destinationVehicleId })} sx={smallButton}>
+        ) : (
+          <Stack direction="row" sx={{ flexWrap: "wrap" }}>
+            {canRemove ? (
+              <Button variant="text" disabled={busy} onClick={() => { setConfirmRemove(current.id); setTransferId(null); setMessage(null); }} sx={textButton}>
+                Remove
+              </Button>
+            ) : null}
+            {canTransfer ? (
+              <Button
+                variant="text"
+                disabled={busy}
+                onClick={() => {
+                  setTransferId(current.id);
+                  setConfirmRemove(null);
+                  setDestinationMembership(membershipId);
+                  setDestinations([]);
+                  setDestinationVehicleId("");
+                  setMessage(null);
+                }}
+                sx={textButton}
+              >
                 Transfer
               </Button>
-            </Stack>
+            ) : null}
+          </Stack>
+        )
+      ) : null}
+      {current && transferId === current.id ? (
+        <Stack spacing={1}>
+          <TextField label="Membership" value={destinationMembership} onChange={(event) => setDestinationMembership(event.target.value.slice(0, 40))} fullWidth />
+          <Stack direction="row" sx={{ gap: 1 }}>
+            <Button variant="outlined" disabled={busy || destinationMembership.trim().length === 0} onClick={findVehicles} sx={smallButton}>
+              Find vehicles
+            </Button>
+          </Stack>
+          {destinations.length > 0 ? (
+            <TextField select label="Vehicle" value={destinationVehicleId} onChange={(event) => setDestinationVehicleId(event.target.value)} fullWidth>
+              {destinations.map((vehicle) => (
+                <MenuItem key={vehicle.id} value={vehicle.id}>
+                  {vehicle.label}
+                </MenuItem>
+              ))}
+            </TextField>
           ) : null}
+          <Button variant="contained" disabled={busy || destinationVehicleId.length === 0} onClick={() => submit({ type: "transfer", subscriptionId: current.id, destinationVehicleId })} sx={smallButton}>
+            Transfer
+          </Button>
         </Stack>
-      ))}
+      ) : null}
+      {plans.length > 1 ? (
+        <Button variant="text" onClick={() => setHistoryOpen(true)} sx={{ alignSelf: "flex-end", "&&": { minHeight: 0, py: "2px", px: 0, fontSize: 14, fontWeight: 600, color: "#0B75E1" } }}>
+          View history
+        </Button>
+      ) : null}
+      <Dialog open={historyOpen} onClose={() => setHistoryOpen(false)} fullWidth maxWidth="xs" sx={sheet}>
+        <DialogTitle sx={{ color: "#003264" }}>Plan history</DialogTitle>
+        <DialogContent>
+          <Stack spacing={1.5} sx={{ pb: { xs: "max(16px, env(safe-area-inset-bottom))", md: 1 } }}>
+            {plans.map((plan) => (
+              <PlanSummary key={plan.id} plan={plan} />
+            ))}
+            <Button variant="outlined" onClick={() => setHistoryOpen(false)} sx={{ alignSelf: "flex-start", ...smallButton }}>
+              Back
+            </Button>
+          </Stack>
+        </DialogContent>
+      </Dialog>
       {canAdd && available.length > 0 ? (
         <Stack spacing={1}>
           <TextField select label="Plan" value={available.includes(planName as WashPlan) ? planName : available[0]} onChange={(event) => setPlanName(event.target.value as WashPlan)} fullWidth>
@@ -162,8 +202,8 @@ export default function VehicleSubscriptions({
               </MenuItem>
             ))}
           </TextField>
-          <Button variant="contained" disabled={busy} onClick={() => submit({ type: "add", vehicleId, planName: available.includes(planName as WashPlan) ? planName : available[0] })} sx={{ ...smallButton, alignSelf: "flex-start" }}>
-            Add plan
+          <Button variant="contained" disabled={busy} onClick={() => submit({ type: "add", vehicleId, planName: available.includes(planName as WashPlan) ? planName : available[0] })} sx={{ ...smallButton, alignSelf: "flex-end" }}>
+            {plans.some((plan) => plan.status === "ACTIVE") ? "Change plan" : "Add plan"}
           </Button>
         </Stack>
       ) : null}

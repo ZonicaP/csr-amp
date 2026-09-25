@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
-import Chip from "@mui/material/Chip";
+import StatusBadge from "@/components/StatusBadge";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import Table from "@mui/material/Table";
@@ -20,16 +20,6 @@ import { AuthRequestError } from "@/lib/auth/http-client";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { customersCacheKey, useCustomersStore, type CustomersPage } from "@/lib/users/customers-store";
 import { customerMatchesQuery, phoneDigits, searchTokens, type UserListItem } from "@/lib/users/user-list";
-
-const statusColor = {
-  ACTIVE: "success",
-  OVERDUE: "warning",
-  CANCELLED: "default",
-} as const;
-
-function StatusChip({ status }: { status: UserListItem["status"] }) {
-  return <Chip size="small" label={status.charAt(0) + status.slice(1).toLowerCase()} color={statusColor[status]} />;
-}
 
 function HighlightPhone({ phone, query }: { phone: string; query: string }) {
   const tokens = searchTokens(query)
@@ -220,7 +210,7 @@ export default function UsersTable() {
                   </TableCell>
                   <TableCell>{user.phone ? <HighlightPhone phone={user.phone} query={debounced} /> : "—"}</TableCell>
                   <TableCell>
-                    <StatusChip status={user.status} />
+                    <StatusBadge status={user.status} />
                   </TableCell>
                 </TableRow>
               ))}
@@ -249,7 +239,7 @@ export default function UsersTable() {
               <Typography sx={{ color: "#003264", fontWeight: 600, minWidth: 0 }}>
                 <HighlightMatch text={user.firstName} query={debounced} /> <HighlightMatch text={user.lastName} query={debounced} />
               </Typography>
-              <StatusChip status={user.status} />
+              <StatusBadge status={user.status} />
             </Stack>
             <Typography sx={{ color: "#003264", fontWeight: 600, fontSize: 14 }}>
               <HighlightMatch text={user.membershipId} query={debounced} />

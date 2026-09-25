@@ -13,6 +13,7 @@ import DialogTitle from "@mui/material/DialogTitle";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
+import DialogCloseButton from "@/components/DialogCloseButton";
 import AccountAction from "@/components/users/AccountAction";
 import SendPaymentLink from "@/components/users/SendPaymentLink";
 import { actionsForQuestion, type AccountIssue, type AccountSnapshot, type SuggestedAction } from "@/lib/debug/account-issue";
@@ -274,13 +275,7 @@ export default function SmartDebug({ membershipId, issue, account }: { membershi
                 Back
               </Button>
             ) : null}
-            <Button
-              variant="outlined"
-              onClick={() => setOpen(false)}
-              sx={{ "&&": { minHeight: 36, py: "6px", px: 2, fontSize: 14 } }}
-            >
-              Close
-            </Button>
+            <DialogCloseButton onClick={() => setOpen(false)} />
           </Stack>
         </Stack>
       </Dialog>
