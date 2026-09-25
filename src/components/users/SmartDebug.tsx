@@ -46,6 +46,7 @@ function IssueAction({
   onCover,
   onReveal,
   onDone,
+  maxDiscount,
 }: {
   membershipId: string;
   action: SuggestedAction;
@@ -53,11 +54,12 @@ function IssueAction({
   onCover?: () => void;
   onReveal?: () => void;
   onDone?: () => void;
+  maxDiscount?: number | null;
 }) {
   if (action.type === "email-payment-link") {
     return <SendPaymentLink membershipId={membershipId} purchaseId={action.purchaseId} appearance={appearance} />;
   }
-  return <AccountAction membershipId={membershipId} action={action} appearance={appearance} onCover={onCover} onReveal={onReveal} onDone={onDone} />;
+  return <AccountAction membershipId={membershipId} action={action} appearance={appearance} maxDiscount={maxDiscount} onCover={onCover} onReveal={onReveal} onDone={onDone} />;
 }
 
 type DebugAnswer = {
@@ -66,7 +68,7 @@ type DebugAnswer = {
   steps: string[];
 };
 
-export default function SmartDebug({ membershipId, issue, account }: { membershipId: string; issue: AccountIssue; account: AccountSnapshot }) {
+export default function SmartDebug({ membershipId, issue, account, maxDiscount = 10 }: { membershipId: string; issue: AccountIssue; account: AccountSnapshot; maxDiscount?: number | null }) {
   const [open, setOpen] = useState(false);
   const [question, setQuestion] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
@@ -214,6 +216,7 @@ export default function SmartDebug({ membershipId, issue, account }: { membershi
                         appearance="button"
                         onCover={() => setCovered(true)}
                         onReveal={() => setCovered(false)}
+                        maxDiscount={maxDiscount}
                         onDone={() => {
                           setCovered(false);
                           setOpen(false);
@@ -256,7 +259,7 @@ export default function SmartDebug({ membershipId, issue, account }: { membershi
             {issue.actions.length > 0 ? (
               <Stack sx={{ gridColumn: 2, gridRow: { xs: 1, md: 2 }, alignItems: "flex-end", alignSelf: "center" }}>
                 {issue.actions.map((action) => (
-                  <IssueAction key={actionKey(action)} membershipId={membershipId} action={action} />
+                  <IssueAction key={actionKey(action)} membershipId={membershipId} action={action} maxDiscount={maxDiscount} />
                 ))}
               </Stack>
             ) : null}

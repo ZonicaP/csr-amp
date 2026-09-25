@@ -14,7 +14,7 @@ function actionKey(action: SuggestedAction) {
   return action.type;
 }
 
-export default function AccountMenu({ membershipId, actions }: { membershipId: string; actions: SuggestedAction[] }) {
+export default function AccountMenu({ membershipId, actions, maxDiscount = 10 }: { membershipId: string; actions: SuggestedAction[]; maxDiscount?: number | null }) {
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
 
   return (
@@ -52,7 +52,7 @@ export default function AccountMenu({ membershipId, actions }: { membershipId: s
             {action.type === "email-payment-link" ? (
               <SendPaymentLink membershipId={membershipId} purchaseId={action.purchaseId} textColor="#181D27" onActivate={() => setAnchor(null)} />
             ) : (
-              <AccountAction membershipId={membershipId} action={action} textColor="#181D27" onActivate={() => setAnchor(null)} />
+              <AccountAction membershipId={membershipId} action={action} textColor="#181D27" maxDiscount={maxDiscount} onActivate={() => setAnchor(null)} />
             )}
           </MenuItem>
         ))}
