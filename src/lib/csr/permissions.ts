@@ -8,6 +8,7 @@ export const permissions = [
   "subscriptions:cancel",
   "subscriptions:transfer",
   "billing:resolve-overdue",
+  "csr:read",
   "csr:manage",
 ] as const;
 
@@ -25,6 +26,7 @@ const supervisorPermissions: Permission[] = [
   "subscriptions:cancel",
   "subscriptions:transfer",
   "billing:resolve-overdue",
+  "csr:read",
 ];
 
 export const rolePermissions: Record<CsrRoleName, readonly Permission[]> = {

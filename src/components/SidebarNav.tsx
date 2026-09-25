@@ -29,14 +29,14 @@ function customerSection(pathname: string) {
   ];
 }
 
-export default function SidebarNav() {
+export default function SidebarNav({ showTeam }: { showTeam: boolean }) {
   const pathname = usePathname();
   const customer = customerSection(pathname);
   const openCustomer = useCustomerNav();
 
   return (
     <Box component="nav" aria-label="Pages" sx={{ display: "flex", flexDirection: "column", gap: 0.5, mt: 3 }}>
-      {appNav.map((item) => {
+      {[...appNav, ...(showTeam ? [{ href: "/team", label: "Team" }] : [])].map((item) => {
         const active = pathname === item.href;
         const inCustomers = item.href === "/customers" && customer !== null;
         return (

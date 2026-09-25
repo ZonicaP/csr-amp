@@ -174,9 +174,21 @@ export async function currentCsr(actorId: string) {
 }
 
 export async function listCsrs(actorId: string) {
-  await requireCsr(actorId, "csr:manage");
-  const csrs = await prisma.csr.findMany({ include: csrInclude, orderBy: { createdAt: "asc" } });
+  await requireCsr(actorId, "csr:read");
+  const csrs = await prisma.csr.findMany({
+    include: csrInclude,
+    orderBy: [{ surname: "asc" }, { name: "asc" }],
+  });
   return csrs.map(toPublicCsr);
+}
+
+export async function cancelInvite(actorId: string, csrId: string) {
+  await requireCsr(actorId, "csr:manage");
+  const csr = await prisma.csr.findUnique({ where: { id: csrId } });
+  if (!csr || csr.status !== CsrStatus.INVITED) {
+    throw new CsrError("NOT_FOUND", "That invite is no longer open");
+  }
+  await prisma.csr.delete({ where: { id: csrId } });
 }
 
 export async function updateCsrAccess(

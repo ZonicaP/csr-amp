@@ -16,6 +16,7 @@ import TablePagination from "@mui/material/TablePagination";
 import TableRow from "@mui/material/TableRow";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
+import HighlightMatch from "@/components/HighlightMatch";
 import { AuthRequestError } from "@/lib/auth/http-client";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { customersCacheKey, useCustomersStore, type CustomersPage } from "@/lib/users/customers-store";
@@ -68,29 +69,6 @@ function HighlightPhone({ phone, query }: { phone: string; query: string }) {
   }
   flush();
   return parts;
-}
-
-function escapeRegExp(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function HighlightMatch({ text, query }: { text: string; query: string }) {
-  const tokens = searchTokens(query).sort((left, right) => right.length - left.length);
-  if (tokens.length === 0) {
-    return text;
-  }
-  const pattern = tokens.map(escapeRegExp).join("|");
-  const parts = text.split(new RegExp(`(${pattern})`, "ig"));
-  const terms = new Set(tokens.map((token) => token.toLowerCase()));
-  return parts.map((part, index) =>
-    terms.has(part.toLowerCase()) ? (
-      <Box key={index} component="mark" sx={{ color: "#0B75E1", backgroundColor: "transparent", fontWeight: 700 }}>
-        {part}
-      </Box>
-    ) : (
-      part
-    ),
-  );
 }
 
 export default function UsersTable() {
