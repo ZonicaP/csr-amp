@@ -2,12 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import NextLink from "next/link";
 import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
-import Link from "@mui/material/Link";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
+import AuthLink from "@/components/auth/AuthLink";
 import PasswordField from "@/components/auth/PasswordField";
 import { postJson } from "@/lib/auth/http-client";
 import { useFormRequest } from "@/hooks/useFormRequest";
@@ -50,12 +49,8 @@ export default function LoginForm() {
       <Button type="submit" variant="contained" disabled={pending} fullWidth>
         {pending ? "Signing in…" : "Sign in"}
       </Button>
-      <Link component={NextLink} href="/forgot-password" underline="hover">
-        Forgot password?
-      </Link>
-      <Link component={NextLink} href="/signup" underline="hover">
-        Have an invite? Create your account
-      </Link>
+      <AuthLink href="/forgot-password">Forgot password?</AuthLink>
+      <AuthLink href="/signup">Have an invite? Create your account</AuthLink>
     </Stack>
   );
 }

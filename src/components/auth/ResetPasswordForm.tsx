@@ -4,9 +4,9 @@ import { useState } from "react";
 import NextLink from "next/link";
 import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
-import Link from "@mui/material/Link";
 import Stack from "@mui/material/Stack";
 import PasswordField from "@/components/auth/PasswordField";
+import AuthLink from "@/components/auth/AuthLink";
 import { putJson } from "@/lib/auth/http-client";
 import { useFormRequest } from "@/hooks/useFormRequest";
 
@@ -71,9 +71,7 @@ export default function ResetPasswordForm({ token }: { token: string }) {
       <Button type="submit" variant="contained" disabled={pending} fullWidth>
         {pending ? "Saving…" : "Update password"}
       </Button>
-      <Link component={NextLink} href="/login" underline="hover">
-        Back to sign in
-      </Link>
+      <AuthLink href="/login">Back to sign in</AuthLink>
     </Stack>
   );
 }

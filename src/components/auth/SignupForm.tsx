@@ -4,8 +4,8 @@ import { useState } from "react";
 import NextLink from "next/link";
 import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
-import Link from "@mui/material/Link";
 import Stack from "@mui/material/Stack";
+import AuthLink from "@/components/auth/AuthLink";
 import PasswordField from "@/components/auth/PasswordField";
 import { postJson } from "@/lib/auth/http-client";
 import { useFormRequest } from "@/hooks/useFormRequest";
@@ -77,9 +77,7 @@ export default function SignupForm({ token }: { token: string }) {
       <Button type="submit" variant="contained" disabled={pending} fullWidth>
         {pending ? "Creating account…" : "Create account"}
       </Button>
-      <Link component={NextLink} href="/login" underline="hover">
-        Already have an account? Sign in
-      </Link>
+      <AuthLink href="/login">Already have an account? Sign in</AuthLink>
     </Stack>
   );
 }
