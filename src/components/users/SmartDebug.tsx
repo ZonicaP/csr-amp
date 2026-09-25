@@ -15,6 +15,7 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import DialogCloseButton, { dialogFooterButton } from "@/components/DialogCloseButton";
 import AccountAction from "@/components/users/AccountAction";
+import LikelyIssue from "@/components/users/LikelyIssue";
 import SendPaymentLink from "@/components/users/SendPaymentLink";
 import { actionsForQuestion, type AccountIssue, type AccountSnapshot, type SuggestedAction } from "@/lib/debug/account-issue";
 
@@ -27,15 +28,8 @@ const frequentIssues = [
   "Plan looks wrong",
 ];
 
-const barColor = {
-  warning: { background: "#FFF8EB", border: "#FFA100", label: "#C47F00" },
-  success: { background: "#F3FBF7", border: "#11B76B", label: "#0E8F54" },
-  neutral: { background: "#F5F6F7", border: "#E5E7EB", label: "#717680" },
-} as const;
-
 function actionKey(action: SuggestedAction) {
   if (action.type === "email-payment-link" || action.type === "refund-charge") return `${action.type}-${action.purchaseId}`;
-  if (action.type === "email-plate-documents") return `${action.type}-${action.vehicleId}`;
   return action.type;
 }
 
@@ -79,7 +73,7 @@ export default function SmartDebug({
   issue: AccountIssue;
   account: AccountSnapshot;
   maxDiscount?: number | null;
-  placement?: "icon" | "center";
+  placement?: "icon" | "center" | "menu";
 }) {
   const [open, setOpen] = useState(false);
   const [question, setQuestion] = useState("");
@@ -93,7 +87,6 @@ export default function SmartDebug({
   const mobile = useMediaQuery(theme.breakpoints.down("md"));
   const showAsk = !mobile || step === "ask";
   const showResults = !mobile || step === "results";
-  const colors = barColor[issue.tone];
   const reported = actionsForQuestion(account, question);
 
   async function ask() {
@@ -120,7 +113,33 @@ export default function SmartDebug({
 
   return (
     <>
-      {placement === "center" ? (
+      {placement === "menu" ? (
+        <Box
+          component="button"
+          type="button"
+          onClick={() => {
+            setStep("ask");
+            setOpen(true);
+          }}
+          sx={{
+            px: 1.5,
+            py: 1.25,
+            pl: 3,
+            border: 0,
+            borderRadius: "12px",
+            backgroundColor: "transparent",
+            color: "#003264",
+            font: "inherit",
+            fontWeight: 600,
+            fontSize: 16,
+            textAlign: "left",
+            cursor: "pointer",
+            "&:hover": { backgroundColor: "rgba(11, 117, 225, 0.08)" },
+          }}
+        >
+          Smart debug
+        </Box>
+      ) : placement === "center" ? (
         <Box
           component="button"
           type="button"
@@ -295,35 +314,7 @@ export default function SmartDebug({
           </Stack>
         </DialogContent>
         <Stack spacing={1.25} sx={{ px: 3, pt: 1, pb: { xs: "max(16px, env(safe-area-inset-bottom))", md: 2 } }}>
-          <Box
-            role="status"
-            sx={{
-              display: "grid",
-              gridTemplateColumns: "minmax(0, 1fr) auto",
-              columnGap: 1,
-              alignItems: "start",
-              px: 1.5,
-              py: 1.25,
-              borderRadius: 2,
-              border: `1px solid ${colors.border}`,
-              backgroundColor: colors.background,
-            }}
-          >
-            <Typography sx={{ gridColumn: 1, gridRow: 1, color: colors.label, fontSize: 12, fontWeight: 700, letterSpacing: "0.04em" }}>
-              MOST LIKELY
-            </Typography>
-            {issue.actions.length > 0 ? (
-              <Stack sx={{ gridColumn: 2, gridRow: { xs: 1, md: 2 }, alignItems: "flex-end", alignSelf: "center" }}>
-                {issue.actions.map((action) => (
-                  <IssueAction key={actionKey(action)} membershipId={membershipId} action={action} maxDiscount={maxDiscount} />
-                ))}
-              </Stack>
-            ) : null}
-            <Box sx={{ gridColumn: { xs: "1 / -1", md: 1 }, gridRow: 2, minWidth: 0 }}>
-              <Typography sx={{ color: "#003264", fontWeight: 600, fontSize: 14 }}>{answer?.likelyIssue ?? issue.headline}</Typography>
-              <Typography sx={{ color: "#717680", fontSize: 14 }}>{issue.detail}</Typography>
-            </Box>
-          </Box>
+          <LikelyIssue membershipId={membershipId} issue={issue} maxDiscount={maxDiscount} headline={answer?.likelyIssue} />
           <Stack direction="row" spacing={1}>
             {mobile && step === "results" ? (
               <Button

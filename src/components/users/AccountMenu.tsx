@@ -10,7 +10,6 @@ import type { SuggestedAction } from "@/lib/debug/account-issue";
 
 function actionKey(action: SuggestedAction) {
   if (action.type === "email-payment-link" || action.type === "refund-charge") return `${action.type}-${action.purchaseId}`;
-  if (action.type === "email-plate-documents") return `${action.type}-${action.vehicleId}`;
   return action.type;
 }
 

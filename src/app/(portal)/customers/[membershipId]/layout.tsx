@@ -24,7 +24,7 @@ export default async function CustomerLayout({ children, params }: { children: R
     ...(customer.status === "CANCELLED"
       ? [{ type: "reactivate-membership" as const }]
       : [{ type: "cancel-membership" as const }, { type: "offer-discount" as const }]),
-    ...customer.vehicles.map((vehicle) => ({ type: "email-plate-documents" as const, vehicleId: vehicle.id })),
+    { type: "email-plate-documents" },
     ...(duplicate ? [{ type: "refund-charge" as const, purchaseId: duplicate.id }] : []),
   ];
 

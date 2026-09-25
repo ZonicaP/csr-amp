@@ -63,58 +63,69 @@ async function seedCustomers() {
     orderBy: { membershipId: "asc" },
   });
   const plans = ["Unlimited Wash", "Basic Wash", "The Works"];
+  const planPrice = { "Unlimited Wash": 39.99, "Basic Wash": 19.99, "The Works": 49.99 } as const;
   const cars = [
     { make: "Toyota", model: "Camry" },
     { make: "Honda", model: "CR-V" },
     { make: "Tesla", model: "Model 3" },
+    { make: "Ford", model: "F-150" },
+    { make: "Subaru", model: "Outback" },
   ];
   for (const [index, customer] of created.entries()) {
-    const car = cars[index % cars.length];
-    const plan = plans[index % plans.length];
-    const year = 2018 + (index % 7);
-    const vehicleName = `${year} ${car.make} ${car.model}`;
-    const amount = [39.99, 19.99, 49.99][index % 3];
-    const price = `$${amount.toFixed(2)}`;
+    const vehicleCount = 1 + (index % 3);
+    const openedAt = new Date(Date.UTC(2024, 0, 15, 16));
+    const renewedAt = new Date(Date.UTC(2025, 0, 12, 16));
+    const latestAt = new Date(Date.UTC(2025, customer.status === AccountStatus.ACTIVE ? 7 : 5, 12, 16));
     const declineReasons = [
       "Card declined, insufficient funds",
       "Card expired",
       "Card declined, do not honor",
     ];
     const declineReason = declineReasons[Math.floor(index / 3) % declineReasons.length];
-    const openedAt = new Date(Date.UTC(2024, 0, 15, 16));
-    const renewedAt = new Date(Date.UTC(2025, 0, 12, 16));
-    const latestAt = new Date(Date.UTC(2025, customer.status === AccountStatus.ACTIVE ? 7 : 5, 12, 16));
-    await prisma.vehicle.create({
-      data: {
-        userId: customer.id,
-        make: car.make,
-        model: car.model,
-        year,
-        licensePlate: georgiaPlate(index),
-        subscriptions: {
-          create: {
-            planName: plan,
-            status: customer.status === AccountStatus.CANCELLED ? "CANCELLED" : "ACTIVE",
-            startedAt: openedAt,
-          },
-        },
-      },
-    });
     const payments = [new Date(Date.UTC(2024, 5, 12, 16)), renewedAt];
     if (customer.status === AccountStatus.ACTIVE) payments.push(latestAt);
-    await prisma.purchase.createMany({
-      data: [
-        ...payments.map((purchasedAt) => ({
+    let vehicleName = "";
+    let plan = plans[index % plans.length];
+    let price = "";
+    for (let slot = 0; slot < vehicleCount; slot += 1) {
+      const car = cars[(index + slot) % cars.length];
+      plan = plans[(index + slot) % plans.length];
+      const year = 2018 + ((index + slot) % 7);
+      vehicleName = `${year} ${car.make} ${car.model}`;
+      const amount = planPrice[plan as keyof typeof planPrice];
+      price = `$${amount.toFixed(2)}`;
+      const vehicle = await prisma.vehicle.create({
+        data: {
           userId: customer.id,
-          description: plan,
-          amount,
-          purchasedAt,
-        })),
-        ...(customer.status === AccountStatus.OVERDUE
-          ? [{ userId: customer.id, description: plan, amount, failureReason: declineReason, purchasedAt: latestAt }]
-          : []),
-      ],
-    });
+          make: car.make,
+          model: car.model,
+          year,
+          licensePlate: georgiaPlate(index + slot * 48),
+          subscriptions: {
+            create: {
+              planName: plan,
+              status: customer.status === AccountStatus.CANCELLED ? "CANCELLED" : "ACTIVE",
+              startedAt: openedAt,
+            },
+          },
+        },
+      });
+      const charges = slot === 0 ? payments : payments.slice(0, 2);
+      await prisma.purchase.createMany({
+        data: [
+          ...charges.map((purchasedAt) => ({
+            userId: customer.id,
+            vehicleId: vehicle.id,
+            description: plan,
+            amount,
+            purchasedAt,
+          })),
+          ...(customer.status === AccountStatus.OVERDUE && slot === 0
+            ? [{ userId: customer.id, vehicleId: vehicle.id, description: plan, amount, failureReason: declineReason, purchasedAt: latestAt }]
+            : []),
+        ],
+      });
+    }
     const events: { type: "ACCOUNT_OPENED" | "PLAN_STARTED" | "PAYMENT_RECEIVED" | "PAYMENT_FAILED" | "ACCOUNT_OVERDUE" | "PLAN_CANCELLED" | "ACCOUNT_CANCELLED"; summary: string; createdAt: Date }[] = [
       { type: "ACCOUNT_OPENED", summary: "Account opened", createdAt: openedAt },
       { type: "PLAN_STARTED", summary: `${plan} started on ${vehicleName}`, createdAt: openedAt },

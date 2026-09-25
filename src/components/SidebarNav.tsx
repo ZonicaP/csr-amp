@@ -3,7 +3,10 @@
 import NextLink from "next/link";
 import { usePathname } from "next/navigation";
 import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
 import { appNav } from "@/lib/navigation";
+import SmartDebug from "@/components/users/SmartDebug";
+import { useCustomerNav } from "@/components/users/CustomerNavProvider";
 
 const linkSx = {
   px: 1.5,
@@ -29,6 +32,7 @@ function customerSection(pathname: string) {
 export default function SidebarNav() {
   const pathname = usePathname();
   const customer = customerSection(pathname);
+  const openCustomer = useCustomerNav();
 
   return (
     <Box component="nav" aria-label="Pages" sx={{ display: "flex", flexDirection: "column", gap: 0.5, mt: 3 }}>
@@ -54,6 +58,11 @@ export default function SidebarNav() {
       })}
       {customer ? (
         <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, mt: 1, pt: 1, borderTop: "1px solid #E5E7EB" }}>
+          {openCustomer ? (
+            <Typography noWrap sx={{ px: 1.5, pt: 0.5, pb: 0.25, color: "#003264", fontWeight: 700, fontSize: 14 }}>
+              {openCustomer.name}
+            </Typography>
+          ) : null}
           {customer.map((item) => (
             <Box
               key={item.href}
@@ -70,6 +79,15 @@ export default function SidebarNav() {
               {item.label}
             </Box>
           ))}
+          {openCustomer ? (
+            <SmartDebug
+              membershipId={openCustomer.membershipId}
+              account={openCustomer.account}
+              issue={openCustomer.issue}
+              maxDiscount={openCustomer.maxDiscount}
+              placement="menu"
+            />
+          ) : null}
         </Box>
       ) : null}
     </Box>

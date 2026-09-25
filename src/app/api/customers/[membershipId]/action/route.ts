@@ -7,11 +7,10 @@ import type { SuggestedAction } from "@/lib/debug/account-issue";
 import { runAccountAction } from "@/lib/users/account-actions";
 
 function actionFrom(body: Record<string, unknown>): SuggestedAction | null {
-  if (body.type === "reactivate-membership" || body.type === "cancel-membership" || body.type === "offer-discount") return { type: body.type };
+  if (body.type === "reactivate-membership" || body.type === "cancel-membership" || body.type === "offer-discount" || body.type === "email-plate-documents") return { type: body.type };
   if ((body.type === "email-payment-link" || body.type === "refund-charge") && typeof body.purchaseId === "string") {
     return { type: body.type, purchaseId: body.purchaseId };
   }
-  if (body.type === "email-plate-documents" && typeof body.vehicleId === "string") return { type: body.type, vehicleId: body.vehicleId };
   return null;
 }
 

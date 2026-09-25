@@ -129,7 +129,7 @@ const customerSelect = {
   },
   purchases: {
     orderBy: { purchasedAt: "desc" as const },
-    select: { id: true, description: true, amount: true, failureReason: true, purchasedAt: true },
+    select: { id: true, vehicleId: true, description: true, amount: true, failureReason: true, purchasedAt: true },
   },
   events: {
     where: { type: { notIn: [CustomerEventType.PAYMENT_RECEIVED, CustomerEventType.PAYMENT_FAILED] } },

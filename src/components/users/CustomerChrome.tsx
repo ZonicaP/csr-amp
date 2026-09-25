@@ -7,8 +7,10 @@ import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import AccountMenu from "@/components/users/AccountMenu";
+import LikelyIssue from "@/components/users/LikelyIssue";
 import SmartDebug from "@/components/users/SmartDebug";
 import type { AccountIssue, AccountSnapshot, SuggestedAction } from "@/lib/debug/account-issue";
+import { PublishCustomerNav } from "@/components/users/CustomerNavProvider";
 
 function TabIcon({ path }: { path: string }) {
   return (
@@ -52,6 +54,7 @@ export default function CustomerChrome({
   ];
   const leading = tabs.slice(0, 2);
   const trailing = tabs.slice(2);
+  const pageTitle = tabs.find((tab) => tab.match)?.label ?? "Info";
 
   return (
     <Box
@@ -64,22 +67,38 @@ export default function CustomerChrome({
         background: "linear-gradient(180deg, #F5FAFF 0%, #FDFDFD 70%)",
       }}
     >
+      <PublishCustomerNav name={name} membershipId={membershipId} account={account} issue={issue} maxDiscount={maxDiscount} />
       <Stack spacing={2} sx={{ width: "100%", maxWidth: 720, mx: "auto" }}>
-        <Box component={NextLink} href="/customers" sx={{ display: { xs: "inline", md: "none" }, alignSelf: "flex-start", color: "#0B75E1", fontWeight: 600, fontSize: 14, textDecoration: "none" }}>
-          ← Customers
-        </Box>
-        <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1, alignItems: "flex-start" }}>
-          <Typography component="h1" variant="h1" sx={{ minWidth: 0 }}>
+        <Stack direction="row" sx={{ display: { xs: "flex", md: "none" }, justifyContent: "space-between", alignItems: "center", gap: 1 }}>
+          <Box component={NextLink} href="/customers" sx={{ flexShrink: 0, color: "#0B75E1", fontWeight: 600, fontSize: 14, textDecoration: "none" }}>
+            ← Customers
+          </Box>
+          <Typography noWrap sx={{ minWidth: 0, color: "#003264", fontWeight: 600, fontSize: 14, textAlign: "right" }}>
             {name}
           </Typography>
-          <Stack direction="row" spacing={1} sx={{ flexShrink: 0, display: { xs: "none", md: "flex" } }}>
-            <SmartDebug membershipId={membershipId} account={account} issue={issue} maxDiscount={maxDiscount} />
+        </Stack>
+        <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1, alignItems: "flex-start" }}>
+          <Typography
+            component="h1"
+            sx={{
+              minWidth: 0,
+              color: "#003264",
+              lineHeight: 1.2,
+              letterSpacing: "-0.02em",
+              fontWeight: { xs: 600, md: 300 },
+              fontSize: { xs: "1.5rem", md: "2rem" },
+            }}
+          >
+            {pageTitle}
+          </Typography>
+          <Box sx={{ flexShrink: 0, display: { xs: "none", md: "block" } }}>
             <AccountMenu membershipId={membershipId} actions={actions} maxDiscount={maxDiscount} />
-          </Stack>
+          </Box>
           <Box sx={{ display: { md: "none" } }}>
             <AccountMenu membershipId={membershipId} actions={actions} maxDiscount={maxDiscount} />
           </Box>
         </Stack>
+        <LikelyIssue membershipId={membershipId} issue={issue} maxDiscount={maxDiscount} />
         <Box
           component="nav"
           aria-label="Customer"

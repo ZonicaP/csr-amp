@@ -30,6 +30,23 @@ const planColor = {
   CANCELLED: "default",
 } as const;
 
+const planTone: Record<string, { fill: string; ink: string }> = {
+  "Basic Wash": { fill: "#E7F0FA", ink: "#003264" },
+  "Unlimited Wash": { fill: "#0B75E1", ink: "#FFFFFF" },
+  "The Works": { fill: "#D5FD6D", ink: "#181D27" },
+};
+
+function planChipSx(name: string) {
+  const tone = planTone[name] ?? { fill: "#F5F6F7", ink: "#181D27" };
+  return {
+    height: 24,
+    fontWeight: 700,
+    backgroundColor: tone.fill,
+    color: tone.ink,
+    "& .MuiChip-label": { color: tone.ink },
+  };
+}
+
 export type VehicleCardPlan = {
   id: string;
   name: string;
@@ -42,15 +59,13 @@ export type VehicleCardDetails = {
   since: string | null;
   plans: VehicleCardPlan[];
   payment: "up-to-date" | "outstanding" | null;
-  failure: { reason: string; amount: string; date: string } | null;
-  lastPayment: { amount: string; date: string } | null;
   paymentLink: { membershipId: string; purchaseId: string } | null;
+  payments?: { id: string; description: string; amount: string; date: string; failureReason: string | null }[];
   planEditor?: ReactNode;
   plateEditor?: ReactNode;
-  extra?: ReactNode;
 };
 
-export default function VehicleCard({ name, plate, since, plans, payment, failure, lastPayment, paymentLink, planEditor, plateEditor, extra }: VehicleCardDetails) {
+export default function VehicleCard({ name, plate, since, plans, payment, paymentLink, payments = [], planEditor, plateEditor }: VehicleCardDetails) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<VehicleDialogTab>("details");
   const outstanding = payment === "outstanding";
@@ -114,7 +129,7 @@ export default function VehicleCard({ name, plate, since, plans, payment, failur
                     !
                   </Box>
                 ) : null}
-                {plans[0] ? <Chip size="small" label={plans[0].name} color={planColor[plans[0].status]} /> : null}
+                {plans[0] ? <Chip size="small" label={plans[0].name} sx={planChipSx(plans[0].name)} /> : null}
               </Stack>
               <Typography sx={{ fontSize: 14 }}>{plate ?? "No plate"}</Typography>
             </Stack>
@@ -175,7 +190,6 @@ export default function VehicleCard({ name, plate, since, plans, payment, failur
                       <Typography sx={{ color: "#003264", fontWeight: 600 }}>{plate ?? "No plate"}</Typography>
                     </Box>
                   )}
-                  {extra ? <Box sx={{ pt: 1.25, borderTop: "1px solid #E5E7EB" }}>{extra}</Box> : null}
                 </Stack>
               </Box>
               <Box aria-hidden={tab !== "plan"} sx={tabPanel(tab === "plan")}>
@@ -192,37 +206,34 @@ export default function VehicleCard({ name, plate, since, plans, payment, failur
                 )}
               </Box>
               <Box aria-hidden={tab !== "payments"} sx={tabPanel(tab === "payments")}>
-                {outstanding || lastPayment ? (
+                {payments.length === 0 ? (
+                  <Typography sx={{ color: "#717680", fontSize: 14 }}>No payments on this vehicle.</Typography>
+                ) : (
                   <Stack spacing={1.25}>
-                    {outstanding ? (
-                      <Box>
+                    {payments.map((item) => (
+                      <Box key={item.id}>
                         <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1, alignItems: "center" }}>
-                          <Typography sx={{ color: "#C47F00", fontWeight: 700, fontSize: 14 }}>Payment outstanding</Typography>
-                          {paymentLink ? <SendPaymentLink membershipId={paymentLink.membershipId} purchaseId={paymentLink.purchaseId} /> : null}
-                        </Stack>
-                        {failure ? (
-                          <Typography sx={{ color: "#717680", fontSize: 14 }}>
-                            Declined {failure.amount} on {failure.date}. {failure.reason}
+                          <Typography sx={{ color: item.failureReason ? "#C47F00" : "#003264", fontWeight: 700, fontSize: 14 }}>
+                            {item.failureReason ? "Payment outstanding" : item.description}
                           </Typography>
-                        ) : null}
-                      </Box>
-                    ) : null}
-                    {lastPayment ? (
-                      <Box>
-                        <Typography sx={{ color: "#003264", fontWeight: 700, fontSize: 14 }}>Last payment received</Typography>
+                          {item.failureReason && paymentLink?.purchaseId === item.id ? (
+                            <SendPaymentLink membershipId={paymentLink.membershipId} purchaseId={paymentLink.purchaseId} />
+                          ) : (
+                            <Typography sx={{ flexShrink: 0, color: "#717680", fontSize: 13 }}>{item.amount}</Typography>
+                          )}
+                        </Stack>
                         <Typography sx={{ color: "#717680", fontSize: 14 }}>
-                          {lastPayment.amount} on {lastPayment.date}
+                          {item.failureReason ? `Declined ${item.amount} on ${item.date}. ${item.failureReason}` : item.date}
                         </Typography>
                       </Box>
-                    ) : null}
+                    ))}
                   </Stack>
-                ) : (
-                  <Typography sx={{ color: "#717680", fontSize: 14 }}>No payments on this vehicle.</Typography>
                 )}
               </Box>
             </Box>
             <Stack direction="row" spacing={1}>
               <DialogCloseButton
+                short
                 onClick={() => {
                   setTab("details");
                   setOpen(false);

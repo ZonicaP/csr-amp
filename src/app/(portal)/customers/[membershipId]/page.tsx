@@ -16,6 +16,7 @@ export default async function CustomerInfoPage({ params }: { params: Promise<{ m
   const { csr, customer } = loaded;
 
   const canUpdate = hasPermission(csr.roles, "customers:update");
+  const canCancel = hasPermission(csr.roles, "subscriptions:cancel");
 
   return (
     <Stack spacing={1.5}>
@@ -31,6 +32,9 @@ export default async function CustomerInfoPage({ params }: { params: Promise<{ m
           <Typography sx={{ color: "#717680", fontSize: 14 }}>Joined {date.format(customer.createdAt)}</Typography>
           {customer.status === "CANCELLED" && canUpdate ? (
             <AccountAction membershipId={customer.membershipId} action={{ type: "reactivate-membership" }} appearance="button" />
+          ) : null}
+          {customer.status !== "CANCELLED" && canCancel ? (
+            <AccountAction membershipId={customer.membershipId} action={{ type: "cancel-membership" }} appearance="button" />
           ) : null}
         </Stack>
       </Paper>
