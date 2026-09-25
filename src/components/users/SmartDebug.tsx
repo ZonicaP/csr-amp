@@ -13,7 +13,7 @@ import DialogTitle from "@mui/material/DialogTitle";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import DialogCloseButton from "@/components/DialogCloseButton";
+import DialogCloseButton, { dialogFooterButton } from "@/components/DialogCloseButton";
 import AccountAction from "@/components/users/AccountAction";
 import SendPaymentLink from "@/components/users/SendPaymentLink";
 import { actionsForQuestion, type AccountIssue, type AccountSnapshot, type SuggestedAction } from "@/lib/debug/account-issue";
@@ -68,7 +68,19 @@ type DebugAnswer = {
   steps: string[];
 };
 
-export default function SmartDebug({ membershipId, issue, account, maxDiscount = 10 }: { membershipId: string; issue: AccountIssue; account: AccountSnapshot; maxDiscount?: number | null }) {
+export default function SmartDebug({
+  membershipId,
+  issue,
+  account,
+  maxDiscount = 10,
+  placement = "icon",
+}: {
+  membershipId: string;
+  issue: AccountIssue;
+  account: AccountSnapshot;
+  maxDiscount?: number | null;
+  placement?: "icon" | "center";
+}) {
   const [open, setOpen] = useState(false);
   const [question, setQuestion] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
@@ -108,6 +120,49 @@ export default function SmartDebug({ membershipId, issue, account, maxDiscount =
 
   return (
     <>
+      {placement === "center" ? (
+        <Box
+          component="button"
+          type="button"
+          aria-label="Smart debug"
+          onClick={() => {
+            setStep("ask");
+            setOpen(true);
+          }}
+          sx={{
+            border: 0,
+            background: "transparent",
+            color: "#0B75E1",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            cursor: "pointer",
+            font: "inherit",
+            minWidth: 64,
+            p: 0,
+          }}
+        >
+          <Box
+            sx={{
+              width: 48,
+              height: 48,
+              transform: "translateY(-10px)",
+              borderRadius: "50%",
+              backgroundColor: "#0B75E1",
+              color: "#fff",
+              display: "grid",
+              placeItems: "center",
+            }}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                fill="currentColor"
+                d="M20 8h-2.81a6 6 0 0 0-1.82-1.96L17 4.41 15.59 3l-2.17 2.17A6 6 0 0 0 12 5c-.49 0-.96.06-1.41.17L8.41 3 7 4.41l1.62 1.63A6 6 0 0 0 6.81 8H4v2h2.09c-.05.33-.09.66-.09 1v1H4v2h2v1c0 .34.04.67.09 1H4v2h2.81A6 6 0 0 0 12 21a6 6 0 0 0 5.19-3H20v-2h-2.09c.05-.33.09-.66.09-1v-1h2v-2h-2v-1c0-.34-.04-.67-.09-1H20V8zm-6 8h-4v-2h4v2zm0-4h-4v-2h4v2z"
+              />
+            </svg>
+          </Box>
+        </Box>
+      ) : (
       <IconButton
         aria-label="Smart debug"
         onClick={() => {
@@ -130,6 +185,7 @@ export default function SmartDebug({ membershipId, issue, account, maxDiscount =
           />
         </svg>
       </IconButton>
+      )}
       <Dialog
         open={open && !covered}
         keepMounted
@@ -268,12 +324,12 @@ export default function SmartDebug({ membershipId, issue, account, maxDiscount =
               <Typography sx={{ color: "#717680", fontSize: 14 }}>{issue.detail}</Typography>
             </Box>
           </Box>
-          <Stack direction="row" sx={{ justifyContent: mobile && step === "results" ? "space-between" : "flex-end" }}>
+          <Stack direction="row" spacing={1}>
             {mobile && step === "results" ? (
               <Button
                 variant="outlined"
                 onClick={() => setStep("ask")}
-                sx={{ "&&": { minHeight: 36, py: "6px", px: 2, fontSize: 14 } }}
+                sx={dialogFooterButton}
               >
                 Back
               </Button>

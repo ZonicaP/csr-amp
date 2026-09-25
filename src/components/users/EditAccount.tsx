@@ -3,15 +3,15 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Button from "@mui/material/Button";
+import IconButton from "@mui/material/IconButton";
 import Dialog from "@mui/material/Dialog";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
+import { dialogFooterButton } from "@/components/DialogCloseButton";
 import { parseAccountDetails } from "@/lib/users/account-details";
-
-const fieldButton = { "&&": { minHeight: 36, py: "6px", px: 2, fontSize: 14 } };
 
 export default function EditAccount({
   membershipId,
@@ -71,9 +71,25 @@ export default function EditAccount({
 
   return (
     <>
-      <Button variant="text" onClick={begin} sx={{ "&&": { minHeight: 0, py: "2px", px: 1, fontSize: 14, fontWeight: 600, color: "#181D27" } }}>
-        Edit
-      </Button>
+      <IconButton
+        aria-label="Edit contact"
+        onClick={begin}
+        sx={{
+          width: 36,
+          height: 36,
+          color: "#181D27",
+          border: "1px solid #E5E7EB",
+          borderRadius: "40px",
+          "&&": { minWidth: 36, minHeight: 36, p: 0 },
+        }}
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            fill="currentColor"
+            d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
+          />
+        </svg>
+      </IconButton>
       <Dialog
         open={open}
         onClose={() => {
@@ -100,11 +116,11 @@ export default function EditAccount({
             <TextField label="Email" type="email" value={draft.email} onChange={(event) => setDraft({ ...draft, email: event.target.value.slice(0, 254) })} fullWidth />
             <TextField label="Phone" value={draft.phone} onChange={(event) => setDraft({ ...draft, phone: event.target.value.slice(0, 24) })} helperText="Leave blank if there is no number" fullWidth />
             {message ? <Typography sx={{ color: "#FA4362", fontSize: 14 }}>{message}</Typography> : null}
-            <Stack direction="row" sx={{ justifyContent: "flex-end", gap: 1 }}>
-              <Button variant="outlined" onClick={() => setOpen(false)} disabled={sending} sx={fieldButton}>
+            <Stack direction="row" spacing={1}>
+              <Button variant="outlined" onClick={() => setOpen(false)} disabled={sending} sx={dialogFooterButton}>
                 Cancel
               </Button>
-              <Button variant="contained" onClick={save} disabled={sending || !("value" in parsed) || unchanged} sx={fieldButton}>
+              <Button variant="contained" onClick={save} disabled={sending || !("value" in parsed) || unchanged} sx={dialogFooterButton}>
                 {sending ? "Saving" : "Save"}
               </Button>
             </Stack>

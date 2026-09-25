@@ -10,7 +10,7 @@ import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import MenuItem from "@mui/material/MenuItem";
-import DialogCloseButton from "@/components/DialogCloseButton";
+import DialogCloseButton, { dialogFooterButton } from "@/components/DialogCloseButton";
 import type { SuggestedAction } from "@/lib/debug/account-issue";
 import { offerPeriods, type OfferPeriod } from "@/lib/users/discount";
 
@@ -171,25 +171,23 @@ export default function AccountAction({
               />
             )}
             {message ? <Typography sx={{ color: "#FA4362", fontSize: 14 }}>{message}</Typography> : null}
-            <Stack direction="row" sx={{ justifyContent: "space-between" }}>
-              {state !== "sent" && onReveal ? (
-                <Button variant="outlined" onClick={reveal} disabled={state === "sending"} sx={{ "&&": { minHeight: 36, py: "6px", px: 2, fontSize: 14 } }}>
-                  Back
-                </Button>
-              ) : (
-                <span />
-              )}
+            <Stack direction="row" spacing={1}>
               {state === "sent" ? (
                 <DialogCloseButton onClick={finish} />
               ) : (
-                <Button
-                  variant="contained"
-                  onClick={() => run()}
-                  disabled={state === "sending" || reason.trim().length === 0}
-                  sx={{ "&&": { minHeight: 36, py: "6px", px: 2, fontSize: 14 } }}
-                >
-                  {state === "sending" ? "Cancelling" : "Cancel"}
-                </Button>
+                <>
+                  <Button variant="outlined" onClick={reveal} disabled={state === "sending"} sx={dialogFooterButton}>
+                    {onReveal ? "Back" : "Close"}
+                  </Button>
+                  <Button
+                    variant="contained"
+                    onClick={() => run()}
+                    disabled={state === "sending" || reason.trim().length === 0}
+                    sx={dialogFooterButton}
+                  >
+                    {state === "sending" ? "Cancelling" : "Cancel"}
+                  </Button>
+                </>
               )}
             </Stack>
           </Stack>
@@ -240,20 +238,18 @@ export default function AccountAction({
               </>
             )}
             {message ? <Typography sx={{ color: "#FA4362", fontSize: 14 }}>{message}</Typography> : null}
-            <Stack direction="row" sx={{ justifyContent: "space-between" }}>
-              {state !== "sent" && onReveal ? (
-                <Button variant="outlined" onClick={reveal} disabled={state === "sending"} sx={{ "&&": { minHeight: 36, py: "6px", px: 2, fontSize: 14 } }}>
-                  Back
-                </Button>
-              ) : (
-                <span />
-              )}
+            <Stack direction="row" spacing={1}>
               {state === "sent" ? (
                 <DialogCloseButton onClick={finish} />
               ) : (
-                <Button variant="contained" onClick={() => run()} disabled={state === "sending" || !discountReady} sx={{ "&&": { minHeight: 36, py: "6px", px: 2, fontSize: 14 } }}>
-                  {state === "sending" ? "Sending" : "Send offer"}
-                </Button>
+                <>
+                  <Button variant="outlined" onClick={reveal} disabled={state === "sending"} sx={dialogFooterButton}>
+                    {onReveal ? "Back" : "Close"}
+                  </Button>
+                  <Button variant="contained" onClick={() => run()} disabled={state === "sending" || !discountReady} sx={dialogFooterButton}>
+                    {state === "sending" ? "Sending" : "Send offer"}
+                  </Button>
+                </>
               )}
             </Stack>
           </Stack>

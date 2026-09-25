@@ -221,12 +221,14 @@ export default function VehicleCard({ name, plate, since, plans, payment, failur
                 )}
               </Box>
             </Box>
-            <DialogCloseButton
-              onClick={() => {
-                setTab("details");
-                setOpen(false);
-              }}
-            />
+            <Stack direction="row" spacing={1}>
+              <DialogCloseButton
+                onClick={() => {
+                  setTab("details");
+                  setOpen(false);
+                }}
+              />
+            </Stack>
           </Stack>
         </DialogContent>
       </Dialog>
