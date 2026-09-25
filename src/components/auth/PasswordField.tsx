@@ -41,7 +41,7 @@ export default function PasswordField({
                 onClick={() => setVisible((current) => !current)}
                 aria-pressed={visible}
                 aria-label={visible ? "Hide password" : "Show password"}
-                sx={{ minHeight: 32, px: 1.5, py: 0.5 }}
+                sx={{ minWidth: 64, minHeight: 48, px: 1.5 }}
               >
                 {visible ? "Hide" : "Show"}
               </Button>

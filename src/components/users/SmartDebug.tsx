@@ -270,7 +270,7 @@ export default function SmartDebug({
               variant="contained"
               onClick={ask}
               disabled={pending || question.trim().length === 0}
-              sx={{ alignSelf: "flex-start", "&&": { minHeight: 36, py: "6px", px: 2, fontSize: 14 } }}
+              sx={{ alignSelf: "flex-end", "&&": { minHeight: 36, py: "6px", px: 2, fontSize: 14 } }}
             >
               {pending ? "Looking" : "Debug"}
             </Button>
