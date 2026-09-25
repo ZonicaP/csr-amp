@@ -17,16 +17,28 @@ function CustomersIcon() {
   );
 }
 
+function ProfileIcon() {
+  return (
+    <Box component="svg" viewBox="0 0 24 24" aria-hidden sx={{ width: 24, height: 24, fill: "currentColor" }}>
+      <path d="M12 12.2a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 7.1c.6-3 3-4.8 7-4.8s6.4 1.8 7 4.8a1 1 0 0 1-1 1.2H6a1 1 0 0 1-1-1.2Z" />
+    </Box>
+  );
+}
+
+const tabs = [
+  { href: "/profile", label: "Profile", icon: ProfileIcon, match: (pathname: string) => pathname === "/profile" || pathname.startsWith("/profile/") },
+  { href: "/customers", label: "Customers", icon: CustomersIcon, match: (pathname: string) => pathname === "/customers" || pathname.startsWith("/customers/") },
+] as const;
+
 export default function TabBar() {
   const pathname = usePathname();
-  const active = pathname === "/customers" || pathname.startsWith("/customers/");
 
   return (
     <Box
       component="nav"
       aria-label="Tabs"
       sx={{
-        display: { xs: "block", md: "none" },
+        display: { xs: "flex", md: "none" },
         position: "fixed",
         left: 0,
         right: 0,
@@ -37,26 +49,34 @@ export default function TabBar() {
         pb: "env(safe-area-inset-bottom)",
       }}
     >
-      <Box
-        component={NextLink}
-        href="/customers"
-        aria-current={active ? "page" : undefined}
-        sx={{
-          minHeight: 56,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 0.25,
-          textDecoration: "none",
-          color: active ? "#0B75E1" : "#717680",
-          fontWeight: 600,
-          fontSize: 12,
-        }}
-      >
-        <CustomersIcon />
-        Customers
-      </Box>
+      {tabs.map((tab) => {
+        const active = tab.match(pathname);
+        const Icon = tab.icon;
+        return (
+          <Box
+            key={tab.href}
+            component={NextLink}
+            href={tab.href}
+            aria-current={active ? "page" : undefined}
+            sx={{
+              flex: 1,
+              minHeight: 56,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 0.25,
+              textDecoration: "none",
+              color: active ? "#0B75E1" : "#717680",
+              fontWeight: 600,
+              fontSize: 12,
+            }}
+          >
+            <Icon />
+            {tab.label}
+          </Box>
+        );
+      })}
     </Box>
   );
 }

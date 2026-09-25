@@ -2,8 +2,8 @@
 
 import { useState, type ReactNode } from "react";
 import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
+import DialogCloseButton from "@/components/DialogCloseButton";
 import Dialog from "@mui/material/Dialog";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
@@ -95,9 +95,7 @@ export default function VehicleCard({ name, plate, since, plans, payment, failur
                     !
                   </Box>
                 ) : null}
-                {plans.map((plan) => (
-                  <Chip key={plan.id} size="small" label={plan.name} color={planColor[plan.status]} />
-                ))}
+                {plans[0] ? <Chip size="small" label={plans[0].name} color={planColor[plans[0].status]} /> : null}
               </Stack>
               <Typography sx={{ fontSize: 14 }}>{plate ?? "No plate"}</Typography>
             </Stack>
@@ -140,40 +138,33 @@ export default function VehicleCard({ name, plate, since, plans, payment, failur
                 ))}
               </>
             )}
-            {payment === "up-to-date" ? (
-              <Typography sx={{ pt: 1, borderTop: "1px solid #E5E7EB", color: "#11B76B", fontWeight: 600 }}>
-                Up to date
-              </Typography>
-            ) : null}
-            {outstanding ? (
-              <Box sx={{ pt: 1.25, borderTop: "1px solid #E5E7EB" }}>
-                <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1, alignItems: "center" }}>
-                  <Typography sx={{ color: "#C47F00", fontWeight: 700, fontSize: 14 }}>Payment outstanding</Typography>
-                  {paymentLink ? <SendPaymentLink membershipId={paymentLink.membershipId} purchaseId={paymentLink.purchaseId} /> : null}
-                </Stack>
-                {failure ? (
-                  <Typography sx={{ color: "#717680", fontSize: 14 }}>
-                    Declined {failure.amount} on {failure.date}. {failure.reason}
-                  </Typography>
+            {outstanding || lastPayment ? (
+              <Stack spacing={1.25} sx={{ pt: 1.25, borderTop: "1px solid #E5E7EB" }}>
+                {outstanding ? (
+                  <Box>
+                    <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1, alignItems: "center" }}>
+                      <Typography sx={{ color: "#C47F00", fontWeight: 700, fontSize: 14 }}>Payment outstanding</Typography>
+                      {paymentLink ? <SendPaymentLink membershipId={paymentLink.membershipId} purchaseId={paymentLink.purchaseId} /> : null}
+                    </Stack>
+                    {failure ? (
+                      <Typography sx={{ color: "#717680", fontSize: 14 }}>
+                        Declined {failure.amount} on {failure.date}. {failure.reason}
+                      </Typography>
+                    ) : null}
+                  </Box>
                 ) : null}
-              </Box>
-            ) : null}
-            {lastPayment ? (
-              <Box sx={{ pt: 1.25, borderTop: "1px solid #E5E7EB" }}>
-                <Typography sx={{ color: "#003264", fontWeight: 700, fontSize: 14 }}>Last payment received</Typography>
-                <Typography sx={{ color: "#717680", fontSize: 14 }}>
-                  {lastPayment.amount} on {lastPayment.date}
-                </Typography>
-              </Box>
+                {lastPayment ? (
+                  <Box>
+                    <Typography sx={{ color: "#003264", fontWeight: 700, fontSize: 14 }}>Last payment received</Typography>
+                    <Typography sx={{ color: "#717680", fontSize: 14 }}>
+                      {lastPayment.amount} on {lastPayment.date}
+                    </Typography>
+                  </Box>
+                ) : null}
+              </Stack>
             ) : null}
             {extra}
-            <Button
-              variant="outlined"
-              onClick={() => setOpen(false)}
-              sx={{ alignSelf: "flex-start", mt: 1, "&&": { minHeight: 36, py: "6px", px: 2, fontSize: 14 } }}
-            >
-              Close
-            </Button>
+            <DialogCloseButton onClick={() => setOpen(false)} />
           </Stack>
         </DialogContent>
       </Dialog>

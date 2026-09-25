@@ -1,8 +1,8 @@
 import NextLink from "next/link";
 import { notFound, redirect } from "next/navigation";
 import Box from "@mui/material/Box";
-import Chip from "@mui/material/Chip";
 import Paper from "@mui/material/Paper";
+import StatusBadge from "@/components/StatusBadge";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import AccountAction from "@/components/users/AccountAction";
@@ -18,12 +18,6 @@ import { getCustomer } from "@/lib/users/user-service";
 
 const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 const date = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" });
-
-const statusColor = {
-  ACTIVE: "success",
-  OVERDUE: "warning",
-  CANCELLED: "default",
-} as const;
 
 export default async function CustomerPage({ params }: { params: Promise<{ membershipId: string }> }) {
   const { membershipId } = await params;
@@ -75,11 +69,7 @@ export default async function CustomerPage({ params }: { params: Promise<{ membe
             </Typography>
             <Stack direction="row" sx={{ mt: 0.5, gap: 1, alignItems: "center" }}>
               <Typography sx={{ color: "#003264", fontWeight: 600 }}>{customer.membershipId}</Typography>
-              <Chip
-                size="small"
-                label={customer.status.charAt(0) + customer.status.slice(1).toLowerCase()}
-                color={statusColor[customer.status]}
-              />
+              <StatusBadge status={customer.status} />
             </Stack>
           </Box>
             <Stack direction="row" spacing={1} sx={{ flexShrink: 0 }}>
@@ -162,16 +152,11 @@ export default async function CustomerPage({ params }: { params: Promise<{ membe
                     />
                   }
                   extra={
-                    <Stack direction="row" sx={{ flexWrap: "wrap", pt: 1, borderTop: "1px solid #E5E7EB" }}>
+                    <Stack direction="row" sx={{ flexWrap: "wrap", gap: 1, pt: 0.5 }}>
                       {customer.status === "CANCELLED" ? (
-                        <AccountAction membershipId={customer.membershipId} action={{ type: "reactivate-membership" }} />
-                      ) : (
-                        <>
-                          <AccountAction membershipId={customer.membershipId} action={{ type: "cancel-membership" }} />
-                          <AccountAction membershipId={customer.membershipId} action={{ type: "offer-discount" }} />
-                        </>
-                      )}
-                      <AccountAction membershipId={customer.membershipId} action={{ type: "email-plate-documents", vehicleId: vehicle.id }} />
+                        <AccountAction membershipId={customer.membershipId} action={{ type: "reactivate-membership" }} appearance="button" />
+                      ) : null}
+                      <AccountAction membershipId={customer.membershipId} action={{ type: "email-plate-documents", vehicleId: vehicle.id }} appearance="button" />
                     </Stack>
                   }
                 />
