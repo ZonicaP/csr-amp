@@ -32,6 +32,7 @@ const tabs = [
 
 export default function TabBar() {
   const pathname = usePathname();
+  if (/^\/customers\/[^/]+/.test(pathname)) return null;
 
   return (
     <Box
