@@ -163,13 +163,17 @@ export default function UsersTable() {
 
   return (
     <Stack spacing={2}>
-      <TextField
-        label="Search"
-        placeholder="Name, email, phone, or membership ID"
-        value={query}
-        onChange={(event) => setQuery(event.target.value)}
-        fullWidth
-      />
+      <Box component="search">
+        <TextField
+          label="Search customers"
+          placeholder="Name, email, phone, or membership ID"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          type="search"
+          autoComplete="off"
+          fullWidth
+        />
+      </Box>
       {error ? <Alert severity="error">{error}</Alert> : null}
       {pending && users.length === 0 ? <Typography>Loading customers…</Typography> : null}
       {cached?.approximate && users.length > 0 ? (
@@ -177,7 +181,7 @@ export default function UsersTable() {
       ) : null}
       <Box sx={{ display: { xs: "none", md: "block" } }}>
         <TableContainer component={Paper} elevation={0} sx={{ border: "1px solid #E5E7EB", borderRadius: 3 }}>
-          <Table>
+          <Table aria-label="Customers">
             <TableHead>
               <TableRow>
                 <TableCell>Name</TableCell>
@@ -193,9 +197,14 @@ export default function UsersTable() {
                   key={user.id}
                   hover
                   tabIndex={0}
+                  role="link"
+                  aria-label={`${user.firstName} ${user.lastName}, ${user.membershipId}`}
                   onClick={() => openCustomer(user.membershipId)}
                   onKeyDown={(event) => {
-                    if (event.key === "Enter") openCustomer(user.membershipId);
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      openCustomer(user.membershipId);
+                    }
                   }}
                   sx={{ cursor: "pointer" }}
                 >
@@ -229,9 +238,14 @@ export default function UsersTable() {
             key={user.id}
             elevation={0}
             tabIndex={0}
+            role="link"
+            aria-label={`${user.firstName} ${user.lastName}, ${user.membershipId}`}
             onClick={() => openCustomer(user.membershipId)}
             onKeyDown={(event) => {
-              if (event.key === "Enter") openCustomer(user.membershipId);
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                openCustomer(user.membershipId);
+              }
             }}
             sx={{ px: 1.5, py: 1.25, border: "1px solid #E5E7EB", borderRadius: 3, cursor: "pointer" }}
           >

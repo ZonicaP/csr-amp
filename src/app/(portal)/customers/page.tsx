@@ -1,8 +1,14 @@
+import type { Metadata } from "next";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import UsersTable from "@/components/users/UsersTable";
 import { requireVerifiedCsr } from "@/lib/csr/guard";
 import { hasPermission } from "@/lib/csr/permissions";
+
+export const metadata: Metadata = {
+  title: "Customers",
+  description: "Search AMP memberships by name, email, phone, or membership ID.",
+};
 
 export default async function CustomersPage() {
   const csr = await requireVerifiedCsr();
@@ -11,6 +17,7 @@ export default async function CustomersPage() {
   return (
     <Box
       component="main"
+      id="main"
       sx={{
         flex: 1,
         px: 2,

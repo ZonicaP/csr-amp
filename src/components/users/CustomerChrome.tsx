@@ -59,6 +59,7 @@ export default function CustomerChrome({
   return (
     <Box
       component="main"
+      id="main"
       sx={{
         flex: 1,
         px: 2,

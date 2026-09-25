@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import CustomerChrome from "@/components/users/CustomerChrome";
@@ -5,12 +6,17 @@ import { accountIssue, accountSnapshot, duplicateCharge, type SuggestedAction } 
 import { maxDiscountPercent } from "@/lib/users/discount";
 import { loadCustomerPage } from "@/lib/users/load-customer-page";
 
+export async function generateMetadata({ params }: { params: Promise<{ membershipId: string }> }): Promise<Metadata> {
+  const { membershipId } = await params;
+  return { title: membershipId.toUpperCase() };
+}
+
 export default async function CustomerLayout({ children, params }: { children: React.ReactNode; params: Promise<{ membershipId: string }> }) {
   const { membershipId } = await params;
   const loaded = await loadCustomerPage(membershipId);
   if (loaded.forbidden) {
     return (
-      <Box component="main" sx={{ p: 3 }}>
+      <Box component="main" id="main" sx={{ p: 3 }}>
         <Typography>You do not have permission to view customers.</Typography>
       </Box>
     );

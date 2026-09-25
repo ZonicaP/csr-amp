@@ -16,6 +16,7 @@ export default function AuthShell({
   return (
     <Box
       component="main"
+      id="main"
       sx={{
         flex: 1,
         display: "flex",

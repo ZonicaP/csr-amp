@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
@@ -7,6 +8,11 @@ import { loadCustomerPage } from "@/lib/users/load-customer-page";
 
 const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 const date = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" });
+
+export async function generateMetadata({ params }: { params: Promise<{ membershipId: string }> }): Promise<Metadata> {
+  const { membershipId } = await params;
+  return { title: `Payments · ${membershipId.toUpperCase()}` };
+}
 
 export default async function CustomerPaymentsPage({ params }: { params: Promise<{ membershipId: string }> }) {
   const { membershipId } = await params;

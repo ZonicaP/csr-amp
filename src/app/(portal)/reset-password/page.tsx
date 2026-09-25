@@ -1,4 +1,7 @@
+import type { Metadata } from "next";
 import AuthShell from "@/components/auth/AuthShell";
+
+export const metadata: Metadata = { title: "Choose a new password" };
 import ResetPasswordForm from "@/components/auth/ResetPasswordForm";
 
 export default async function ResetPasswordPage({

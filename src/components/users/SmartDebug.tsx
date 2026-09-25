@@ -117,6 +117,7 @@ export default function SmartDebug({
         <Box
           component="button"
           type="button"
+          aria-haspopup="dialog"
           onClick={() => {
             setStep("ask");
             setOpen(true);
