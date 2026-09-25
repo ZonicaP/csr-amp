@@ -4,6 +4,7 @@ import { hasPermission } from "@/lib/csr/permissions";
 import { appUrl, createEmailService } from "@/lib/email/email-service";
 import { NoticeEmail } from "@/lib/email/notice-email";
 import type { SuggestedAction } from "@/lib/debug/account-issue";
+import { parseOfferDiscount } from "@/lib/users/discount";
 
 async function customerFor(membershipId: string) {
   const customer = await prisma.user.findFirst({
@@ -21,14 +22,19 @@ async function customerFor(membershipId: string) {
   return customer;
 }
 
-export async function runAccountAction(actorId: string, membershipId: string, action: SuggestedAction, reason = "") {
+export async function runAccountAction(
+  actorId: string,
+  membershipId: string,
+  action: SuggestedAction,
+  input: { reason?: string; percent?: unknown; period?: unknown } = {},
+) {
   const actor = await currentCsr(actorId);
   const customer = await customerFor(membershipId);
   const mail = createEmailService();
   const to = actor.email;
 
   if (action.type === "cancel-membership") {
-    const cancellationReason = reason.trim();
+    const cancellationReason = (input.reason ?? "").trim();
     if (!cancellationReason) throw new CsrError("INVALID", "Add a reason for the cancellation");
     if (!hasPermission(actor.roles, "subscriptions:cancel")) throw new CsrError("FORBIDDEN", "You do not have permission for this action");
     if (customer.status === "CANCELLED") throw new CsrError("CONFLICT", "This membership is already cancelled");
@@ -72,16 +78,30 @@ export async function runAccountAction(actorId: string, membershipId: string, ac
 
   if (action.type === "offer-discount") {
     if (!hasPermission(actor.roles, "customers:read")) throw new CsrError("FORBIDDEN", "You do not have permission for this action");
+    if (customer.status === "CANCELLED") throw new CsrError("CONFLICT", "This membership is already cancelled");
+    const offer = parseOfferDiscount(input.percent, input.period, actor.roles);
+    if ("error" in offer) throw new CsrError("INVALID", offer.error);
     await mail.send(
       to,
       new NoticeEmail(
         appUrl(),
-        `10% off for ${customer.membershipId}`,
+        `${offer.percent}% off for ${offer.label} for ${customer.membershipId}`,
         "Stay on your membership",
-        [`Hi ${customer.firstName}, you can keep this membership at 10% off the current plan price.`, "Reply to this email if you want the discount applied."],
+        [
+          `Hi ${customer.firstName}, you can keep this membership at ${offer.percent}% off the current plan price for ${offer.label}.`,
+          "Reply to this email if you want the discount applied.",
+        ],
         "This offer email is delivered to the signed-in CSR for this project.",
       ),
     );
+    await prisma.customerEvent.create({
+      data: {
+        userId: customer.id,
+        type: "ACCOUNT_UPDATED",
+        summary: `Discount offered: ${offer.percent}% off for ${offer.label}.`.slice(0, 500),
+        createdAt: new Date(),
+      },
+    });
     return;
   }
 

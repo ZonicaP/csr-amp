@@ -14,6 +14,7 @@ import VehicleSubscriptions from "@/components/users/VehicleSubscriptions";
 import { requireVerifiedCsr } from "@/lib/csr/guard";
 import { hasPermission } from "@/lib/csr/permissions";
 import { accountIssue, accountSnapshot, duplicateCharge, type SuggestedAction } from "@/lib/debug/account-issue";
+import { maxDiscountPercent } from "@/lib/users/discount";
 import { getCustomer } from "@/lib/users/user-service";
 
 const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
@@ -70,8 +71,8 @@ export default async function CustomerPage({ params }: { params: Promise<{ membe
             </Stack>
           </Box>
             <Stack direction="row" spacing={1} sx={{ flexShrink: 0 }}>
-              <SmartDebug membershipId={customer.membershipId} account={snapshot} issue={accountIssue(snapshot)} />
-              <AccountMenu membershipId={customer.membershipId} actions={menuActions} />
+              <SmartDebug membershipId={customer.membershipId} account={snapshot} issue={accountIssue(snapshot)} maxDiscount={maxDiscountPercent(csr.roles)} />
+              <AccountMenu membershipId={customer.membershipId} actions={menuActions} maxDiscount={maxDiscountPercent(csr.roles)} />
             </Stack>
         </Stack>
         <Paper elevation={0} sx={{ p: { xs: 1.5, md: 2 }, border: "1px solid #E5E7EB", borderRadius: 3 }}>

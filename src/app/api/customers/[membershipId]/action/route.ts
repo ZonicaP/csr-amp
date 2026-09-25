@@ -27,7 +27,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ mem
     if (action.type === "cancel-membership" && (reason.length === 0 || reason.length > 200)) {
       return NextResponse.json({ error: "Add a reason for the cancellation" }, { status: 400 });
     }
-    await runAccountAction(session.csrId, membershipId, action, reason);
+    await runAccountAction(session.csrId, membershipId, action, { reason, percent: body.percent, period: body.period });
     return NextResponse.json({ ok: true });
   } catch (error) {
     if (error instanceof EmailDeliveryError) return NextResponse.json({ error: error.message }, { status: 502 });
