@@ -7,10 +7,23 @@ import DialogCloseButton from "@/components/DialogCloseButton";
 import Dialog from "@mui/material/Dialog";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
+import Tab from "@mui/material/Tab";
+import Tabs from "@mui/material/Tabs";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import SendPaymentLink from "@/components/users/SendPaymentLink";
+
+type VehicleDialogTab = "details" | "plan" | "payments";
+
+function tabPanel(active: boolean) {
+  return {
+    gridArea: "1 / 1",
+    minWidth: 0,
+    visibility: active ? "visible" : "hidden",
+    pointerEvents: active ? "auto" : "none",
+  } as const;
+}
 
 const planColor = {
   ACTIVE: "success",
@@ -33,11 +46,13 @@ export type VehicleCardDetails = {
   lastPayment: { amount: string; date: string } | null;
   paymentLink: { membershipId: string; purchaseId: string } | null;
   planEditor?: ReactNode;
+  plateEditor?: ReactNode;
   extra?: ReactNode;
 };
 
-export default function VehicleCard({ name, plate, since, plans, payment, failure, lastPayment, paymentLink, planEditor, extra }: VehicleCardDetails) {
+export default function VehicleCard({ name, plate, since, plans, payment, failure, lastPayment, paymentLink, planEditor, plateEditor, extra }: VehicleCardDetails) {
   const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState<VehicleDialogTab>("details");
   const outstanding = payment === "outstanding";
 
   return (
@@ -47,10 +62,14 @@ export default function VehicleCard({ name, plate, since, plans, payment, failur
         role="button"
         tabIndex={0}
         aria-label={outstanding ? `${name}, payment outstanding` : name}
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setTab("details");
+          setOpen(true);
+        }}
         onKeyDown={(event) => {
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
+            setTab("details");
             setOpen(true);
           }
         }}
@@ -104,7 +123,10 @@ export default function VehicleCard({ name, plate, since, plans, payment, failur
       </Paper>
       <Dialog
         open={open}
-        onClose={() => setOpen(false)}
+        onClose={() => {
+          setTab("details");
+          setOpen(false);
+        }}
         fullWidth
         maxWidth="xs"
         sx={{
@@ -117,7 +139,7 @@ export default function VehicleCard({ name, plate, since, plans, payment, failur
           },
         }}
       >
-        <DialogTitle sx={{ color: "#003264" }}>
+        <DialogTitle sx={{ color: "#003264", pb: 0 }}>
           <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1, alignItems: "baseline" }}>
             <Box sx={{ minWidth: 0 }}>{name}</Box>
             <Typography component="span" sx={{ flexShrink: 0, color: "#717680", fontSize: 14, fontWeight: 600 }}>
@@ -125,46 +147,86 @@ export default function VehicleCard({ name, plate, since, plans, payment, failur
             </Typography>
           </Stack>
         </DialogTitle>
-        <DialogContent>
-          <Stack spacing={1} sx={{ pb: { xs: "max(16px, env(safe-area-inset-bottom))", md: 1 } }}>
-            {planEditor ?? (
-              <>
-                {plans.length === 0 ? <Typography>No membership on this vehicle.</Typography> : null}
-                {plans.map((plan) => (
-                  <Typography key={plan.id}>
-                    {plan.name}
-                    {since ? ` since ${since}` : ""}
-                  </Typography>
-                ))}
-              </>
-            )}
-            {outstanding || lastPayment ? (
-              <Stack spacing={1.25} sx={{ pt: 1.25, borderTop: "1px solid #E5E7EB" }}>
-                {outstanding ? (
-                  <Box>
-                    <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1, alignItems: "center" }}>
-                      <Typography sx={{ color: "#C47F00", fontWeight: 700, fontSize: 14 }}>Payment outstanding</Typography>
-                      {paymentLink ? <SendPaymentLink membershipId={paymentLink.membershipId} purchaseId={paymentLink.purchaseId} /> : null}
-                    </Stack>
-                    {failure ? (
-                      <Typography sx={{ color: "#717680", fontSize: 14 }}>
-                        Declined {failure.amount} on {failure.date}. {failure.reason}
+        <Tabs
+          value={tab}
+          onChange={(_event, next: VehicleDialogTab) => setTab(next)}
+          variant="fullWidth"
+          sx={{
+            minHeight: 40,
+            px: 1,
+            borderBottom: "1px solid #E5E7EB",
+            "& .MuiTab-root": { minHeight: 40, textTransform: "none", fontWeight: 600, fontSize: 14, color: "#717680" },
+            "& .Mui-selected": { color: "#0B75E1" },
+            "& .MuiTabs-indicator": { backgroundColor: "#0B75E1" },
+          }}
+        >
+          <Tab value="details" label="Details" />
+          <Tab value="plan" label="Plan" />
+          <Tab value="payments" label="Payments" />
+        </Tabs>
+        <DialogContent sx={{ "&&": { pt: 2.5 } }}>
+          <Stack spacing={1.5} sx={{ pb: { xs: "max(16px, env(safe-area-inset-bottom))", md: 1 } }}>
+            <Box sx={{ display: "grid" }}>
+              <Box aria-hidden={tab !== "details"} sx={tabPanel(tab === "details")}>
+                <Stack spacing={1.5}>
+                  {plateEditor ?? (
+                    <Box>
+                      <Typography sx={{ color: "#717680", fontSize: 14 }}>Plate</Typography>
+                      <Typography sx={{ color: "#003264", fontWeight: 600 }}>{plate ?? "No plate"}</Typography>
+                    </Box>
+                  )}
+                  {extra ? <Box sx={{ pt: 1.25, borderTop: "1px solid #E5E7EB" }}>{extra}</Box> : null}
+                </Stack>
+              </Box>
+              <Box aria-hidden={tab !== "plan"} sx={tabPanel(tab === "plan")}>
+                {planEditor ?? (
+                  <Stack spacing={1.5}>
+                    {plans.length === 0 ? <Typography>No plan on this vehicle.</Typography> : null}
+                    {plans.map((plan) => (
+                      <Typography key={plan.id}>
+                        {plan.name}
+                        {since ? ` since ${since}` : ""}
                       </Typography>
+                    ))}
+                  </Stack>
+                )}
+              </Box>
+              <Box aria-hidden={tab !== "payments"} sx={tabPanel(tab === "payments")}>
+                {outstanding || lastPayment ? (
+                  <Stack spacing={1.25}>
+                    {outstanding ? (
+                      <Box>
+                        <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1, alignItems: "center" }}>
+                          <Typography sx={{ color: "#C47F00", fontWeight: 700, fontSize: 14 }}>Payment outstanding</Typography>
+                          {paymentLink ? <SendPaymentLink membershipId={paymentLink.membershipId} purchaseId={paymentLink.purchaseId} /> : null}
+                        </Stack>
+                        {failure ? (
+                          <Typography sx={{ color: "#717680", fontSize: 14 }}>
+                            Declined {failure.amount} on {failure.date}. {failure.reason}
+                          </Typography>
+                        ) : null}
+                      </Box>
                     ) : null}
-                  </Box>
-                ) : null}
-                {lastPayment ? (
-                  <Box>
-                    <Typography sx={{ color: "#003264", fontWeight: 700, fontSize: 14 }}>Last payment received</Typography>
-                    <Typography sx={{ color: "#717680", fontSize: 14 }}>
-                      {lastPayment.amount} on {lastPayment.date}
-                    </Typography>
-                  </Box>
-                ) : null}
-              </Stack>
-            ) : null}
-            {extra}
-            <DialogCloseButton onClick={() => setOpen(false)} />
+                    {lastPayment ? (
+                      <Box>
+                        <Typography sx={{ color: "#003264", fontWeight: 700, fontSize: 14 }}>Last payment received</Typography>
+                        <Typography sx={{ color: "#717680", fontSize: 14 }}>
+                          {lastPayment.amount} on {lastPayment.date}
+                        </Typography>
+                      </Box>
+                    ) : null}
+                  </Stack>
+                ) : (
+                  <Typography sx={{ color: "#717680", fontSize: 14 }}>No payments on this vehicle.</Typography>
+                )}
+              </Box>
+            </Box>
+            <DialogCloseButton
+              onClick={() => {
+                setTab("details");
+                setOpen(false);
+              }}
+            />
           </Stack>
         </DialogContent>
       </Dialog>
