@@ -1,4 +1,7 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+
+export const metadata: Metadata = { title: "Verify email" };
 import AuthShell from "@/components/auth/AuthShell";
 import AwaitingVerification from "@/components/auth/AwaitingVerification";
 import VerifyEmailForm from "@/components/auth/VerifyEmailForm";

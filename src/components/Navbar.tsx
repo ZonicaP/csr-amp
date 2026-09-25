@@ -28,6 +28,7 @@ export default function Navbar({ name }: { name: string }) {
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 1.5, minWidth: 0 }}>
         <Link
           href="/profile"
+          aria-label={`Account, ${name}`}
           style={{
             color: "#717680",
             fontSize: 14,

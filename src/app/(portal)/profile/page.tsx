@@ -1,8 +1,11 @@
+import type { Metadata } from "next";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import SignOutButton from "@/components/SignOutButton";
 import { requireVerifiedCsr } from "@/lib/csr/guard";
+
+export const metadata: Metadata = { title: "Profile" };
 
 export default async function ProfilePage() {
   const csr = await requireVerifiedCsr();
@@ -10,6 +13,7 @@ export default async function ProfilePage() {
   return (
     <Box
       component="main"
+      id="main"
       sx={{
         flex: 1,
         px: 2,

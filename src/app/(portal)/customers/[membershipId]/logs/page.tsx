@@ -1,9 +1,15 @@
+import type { Metadata } from "next";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { loadCustomerPage } from "@/lib/users/load-customer-page";
 
 const date = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" });
+
+export async function generateMetadata({ params }: { params: Promise<{ membershipId: string }> }): Promise<Metadata> {
+  const { membershipId } = await params;
+  return { title: `Logs · ${membershipId.toUpperCase()}` };
+}
 
 export default async function CustomerLogsPage({ params }: { params: Promise<{ membershipId: string }> }) {
   const { membershipId } = await params;

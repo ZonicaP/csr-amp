@@ -3,3 +3,26 @@ body {
   margin: 0;
   padding: 0;
 }
+
+.skip-link {
+  position: absolute;
+  left: 16px;
+  top: 8px;
+  z-index: 3000;
+  transform: translateY(-150%);
+  padding: 8px 14px;
+  border-radius: 40px;
+  background: #0b75e1;
+  color: #fff;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.skip-link:focus {
+  transform: none;
+}
+
+:focus-visible {
+  outline: 2px solid #0b75e1;
+  outline-offset: 2px;
+}

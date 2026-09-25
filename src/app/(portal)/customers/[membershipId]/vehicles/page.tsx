@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import PlateField from "@/components/users/PlateField";
@@ -7,6 +8,11 @@ import { hasPermission } from "@/lib/csr/permissions";
 import { loadCustomerPage } from "@/lib/users/load-customer-page";
 
 const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+
+export async function generateMetadata({ params }: { params: Promise<{ membershipId: string }> }): Promise<Metadata> {
+  const { membershipId } = await params;
+  return { title: `Vehicles · ${membershipId.toUpperCase()}` };
+}
 const date = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" });
 
 export default async function CustomerVehiclesPage({ params }: { params: Promise<{ membershipId: string }> }) {

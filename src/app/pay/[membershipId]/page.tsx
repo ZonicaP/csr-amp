@@ -1,14 +1,23 @@
+import type { Metadata } from "next";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
+import { privateRobots } from "@/lib/seo";
 import { publicPaymentDue } from "@/lib/users/user-service";
+
+export const metadata: Metadata = {
+  title: "Payment due",
+  description: "A private AMP Memberships payment page.",
+  robots: privateRobots,
+  referrer: "no-referrer",
+};
 
 export default async function PayPage({ params }: { params: Promise<{ membershipId: string }> }) {
   const { membershipId } = await params;
   const due = await publicPaymentDue(membershipId);
 
   return (
-    <Box component="main" sx={{ minHeight: "100dvh", px: 2, py: 6, background: "linear-gradient(180deg, #F5FAFF 0%, #FDFDFD 70%)" }}>
+    <Box component="main" id="main" sx={{ minHeight: "100dvh", px: 2, py: 6, background: "linear-gradient(180deg, #F5FAFF 0%, #FDFDFD 70%)" }}>
       <Stack spacing={2} sx={{ width: "100%", maxWidth: 480, mx: "auto" }}>
         <Typography component="h1" variant="h1">
           Payment due

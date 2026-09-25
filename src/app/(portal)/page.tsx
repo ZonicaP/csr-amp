@@ -1,6 +1,9 @@
+import type { Metadata } from "next";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import { requireVerifiedCsr } from "@/lib/csr/guard";
+
+export const metadata: Metadata = { title: "Home" };
 
 export default async function Home() {
   const csr = await requireVerifiedCsr();
@@ -8,6 +11,7 @@ export default async function Home() {
   return (
     <Box
       component="main"
+      id="main"
       sx={{
         flex: 1,
         px: 2,

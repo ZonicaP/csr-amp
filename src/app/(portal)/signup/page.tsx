@@ -1,4 +1,7 @@
+import type { Metadata } from "next";
 import AuthShell from "@/components/auth/AuthShell";
+
+export const metadata: Metadata = { title: "Create your account" };
 import SignupForm from "@/components/auth/SignupForm";
 
 export default async function SignupPage({

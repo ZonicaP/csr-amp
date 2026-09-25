@@ -76,7 +76,7 @@ export default function VehicleCard({ name, plate, since, plans, payment, paymen
         elevation={0}
         role="button"
         tabIndex={0}
-        aria-label={outstanding ? `${name}, payment outstanding` : name}
+        aria-label={[name, plate, outstanding ? "payment outstanding" : null].filter(Boolean).join(", ")}
         onClick={() => {
           setTab("details");
           setOpen(true);
