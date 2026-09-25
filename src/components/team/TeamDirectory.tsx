@@ -54,6 +54,8 @@ function roleOptions() {
   ));
 }
 
+const compactButton = { "&&": { minHeight: 36, py: "6px", px: 2, fontSize: 14 } };
+
 const roleMenu = {
   slotProps: { paper: { sx: { width: 320, maxWidth: "calc(100vw - 32px)" } } },
 } as const;
@@ -172,25 +174,6 @@ export default function TeamDirectory({ team, canManage }: { team: TeamMember[];
     }
   }
 
-  function roleControl(member: TeamMember) {
-    if (!canManage) return <Typography sx={{ fontSize: 14 }}>{member.roles.map(roleLabel).join(", ")}</Typography>;
-    return (
-      <TextField
-        select
-        value={primaryRole(member)}
-        disabled={busyId === member.id}
-        onChange={(event) => changeRole(member, event.target.value as CsrRoleName)}
-        sx={{ minWidth: 160 }}
-        slotProps={{
-          htmlInput: { "aria-label": `Role for ${member.name} ${member.surname}` },
-          select: { renderValue: (value: unknown) => roleLabel(value as CsrRoleName), MenuProps: roleMenu },
-        }}
-      >
-        {roleOptions()}
-      </TextField>
-    );
-  }
-
   return (
     <Stack spacing={2}>
       <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", gap: 2 }}>
@@ -198,7 +181,7 @@ export default function TeamDirectory({ team, canManage }: { team: TeamMember[];
           Team
         </Typography>
         {canManage ? (
-          <Button variant="contained" onClick={() => { setInviteError(null); setInviteOpen(true); }} sx={{ flexShrink: 0 }}>
+          <Button variant="contained" onClick={() => { setInviteError(null); setInviteOpen(true); }} sx={{ ...compactButton, flexShrink: 0 }}>
             Invite
           </Button>
         ) : null}
@@ -224,46 +207,50 @@ export default function TeamDirectory({ team, canManage }: { team: TeamMember[];
                 <TableCell>Name</TableCell>
                 <TableCell>Email</TableCell>
                 <TableCell>Role</TableCell>
-                {canManage ? <TableCell align="right">Invite</TableCell> : null}
               </TableRow>
             </TableHead>
             <TableBody>
-              {matches.map((member) => (
-                <TableRow key={member.id}>
-                  <TableCell sx={{ color: "#003264", fontWeight: 600 }}>
-                    <HighlightMatch text={member.name} query={query} /> <HighlightMatch text={member.surname} query={query} />
-                  </TableCell>
-                  <TableCell>
-                    <HighlightMatch text={member.email} query={query} />
-                  </TableCell>
-                  <TableCell>
-                    {canManage ? (
-                      <Stack direction="row" sx={{ alignItems: "center", gap: 1, flexWrap: "wrap" }}>
-                        {roleControl(member)}
-                        {member.status !== "ACTIVE" ? <RoleBadge role={primaryRole(member)} status={member.status} /> : null}
-                      </Stack>
-                    ) : (
+              {matches.map((member) => {
+                const label = `${member.name} ${member.surname}, ${member.roles.map((entry) => roleBadgeText(entry, member.status)).join(", ")}`;
+                return (
+                  <TableRow
+                    key={member.id}
+                    hover={canManage}
+                    tabIndex={canManage ? 0 : undefined}
+                    role={canManage ? "button" : undefined}
+                    aria-label={canManage ? label : undefined}
+                    onClick={canManage ? () => openMember(member) : undefined}
+                    onKeyDown={
+                      canManage
+                        ? (event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              openMember(member);
+                            }
+                          }
+                        : undefined
+                    }
+                    sx={{ cursor: canManage ? "pointer" : "default" }}
+                  >
+                    <TableCell sx={{ color: "#003264", fontWeight: 600 }}>
+                      <HighlightMatch text={member.name} query={query} /> <HighlightMatch text={member.surname} query={query} />
+                    </TableCell>
+                    <TableCell>
+                      <HighlightMatch text={member.email} query={query} />
+                    </TableCell>
+                    <TableCell>
                       <Stack direction="row" sx={{ flexWrap: "wrap", gap: 0.75 }}>
                         {member.roles.map((entry) => (
                           <RoleBadge key={entry} role={entry} status={member.status} />
                         ))}
                       </Stack>
-                    )}
-                  </TableCell>
-                  {canManage ? (
-                    <TableCell align="right">
-                      {member.status === "INVITED" ? (
-                        <Button variant="text" onClick={() => setCancelId(member.id)} sx={{ minHeight: 48 }}>
-                          Cancel invite
-                        </Button>
-                      ) : null}
                     </TableCell>
-                  ) : null}
-                </TableRow>
-              ))}
+                  </TableRow>
+                );
+              })}
               {matches.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={canManage ? 4 : 3}>No team members match that search.</TableCell>
+                  <TableCell colSpan={3}>No team members match that search.</TableCell>
                 </TableRow>
               ) : null}
             </TableBody>
@@ -343,10 +330,10 @@ export default function TeamDirectory({ team, canManage }: { team: TeamMember[];
               {roleOptions()}
             </TextField>
             <Stack direction="row" spacing={1}>
-              <Button variant="outlined" onClick={() => setInviteOpen(false)} disabled={inviting} sx={dialogFooterButton}>
+              <Button variant="outlined" onClick={() => setInviteOpen(false)} disabled={inviting} sx={{ ...dialogFooterButton, ...compactButton }}>
                 Cancel
               </Button>
-              <Button type="submit" variant="contained" disabled={inviting} sx={dialogFooterButton}>
+              <Button type="submit" variant="contained" disabled={inviting} sx={{ ...dialogFooterButton, ...compactButton }}>
                 {inviting ? "Sending…" : "Send invite"}
               </Button>
             </Stack>
