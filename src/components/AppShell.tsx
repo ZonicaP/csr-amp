@@ -4,13 +4,13 @@ import Sidebar from "@/components/Sidebar";
 import TabBar from "@/components/TabBar";
 import { CustomerNavProvider } from "@/components/users/CustomerNavProvider";
 
-export default function AppShell({ name, children }: { name: string | null; children: React.ReactNode }) {
+export default function AppShell({ name, showTeam = false, children }: { name: string | null; showTeam?: boolean; children: React.ReactNode }) {
   return (
     <CustomerNavProvider>
       <Box sx={{ minHeight: "100dvh", display: "flex", flexDirection: "column" }}>
         {name ? <Navbar name={name} /> : null}
         <Box sx={{ flex: 1, display: "flex", minHeight: 0 }}>
-          {name ? <Sidebar name={name} /> : null}
+          {name ? <Sidebar name={name} showTeam={showTeam} /> : null}
           <Box
             component="section"
             sx={{
@@ -24,7 +24,7 @@ export default function AppShell({ name, children }: { name: string | null; chil
             {children}
           </Box>
         </Box>
-        {name ? <TabBar /> : null}
+        {name ? <TabBar showTeam={showTeam} /> : null}
       </Box>
     </CustomerNavProvider>
   );

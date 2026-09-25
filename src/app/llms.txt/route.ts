@@ -15,6 +15,7 @@ This is a staff tool. Membership records, plates, payments, and contact details 
 ## Do not ingest
 
 - /customers
+- /team
 - /pay
 - /profile
 - /api

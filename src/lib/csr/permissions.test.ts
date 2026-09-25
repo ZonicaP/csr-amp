@@ -7,6 +7,7 @@ describe("CSR permissions", () => {
     assert.equal(hasPermission(["AGENT"], "customers:read"), true);
     assert.equal(hasPermission(["AGENT"], "customers:update"), true);
     assert.equal(hasPermission(["AGENT"], "subscriptions:cancel"), false);
+    assert.equal(hasPermission(["AGENT"], "csr:read"), false);
     assert.equal(hasPermission(["AGENT"], "csr:manage"), false);
   });
 
@@ -14,6 +15,7 @@ describe("CSR permissions", () => {
     assert.equal(hasPermission(["SUPERVISOR"], "subscriptions:transfer"), true);
     assert.equal(hasPermission(["SUPERVISOR"], "subscriptions:cancel"), true);
     assert.equal(hasPermission(["SUPERVISOR"], "billing:resolve-overdue"), true);
+    assert.equal(hasPermission(["SUPERVISOR"], "csr:read"), true);
     assert.equal(hasPermission(["SUPERVISOR"], "csr:manage"), false);
   });
 

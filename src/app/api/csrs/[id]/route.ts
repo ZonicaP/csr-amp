@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { CsrRoleName, CsrStatus } from "@prisma/client";
-import { updateCsrAccess } from "@/lib/csr/csr-service";
+import { cancelInvite, updateCsrAccess } from "@/lib/csr/csr-service";
 import { csrErrorResponse } from "@/lib/csr/http";
 import { readSession } from "@/lib/csr/session";
 
@@ -31,6 +31,20 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       roles: roles as CsrRoleName[] | undefined,
     });
     return NextResponse.json({ csr });
+  } catch (error) {
+    return csrErrorResponse(error);
+  }
+}
+
+export async function DELETE(_request: Request, context: { params: Promise<{ id: string }> }) {
+  try {
+    const session = await readSession();
+    if (!session) {
+      return NextResponse.json({ error: "Sign in as an active CSR" }, { status: 401 });
+    }
+    const { id } = await context.params;
+    await cancelInvite(session.csrId, id);
+    return NextResponse.json({ ok: true });
   } catch (error) {
     return csrErrorResponse(error);
   }

@@ -25,14 +25,24 @@ function ProfileIcon() {
   );
 }
 
+function TeamIcon() {
+  return (
+    <Box component="svg" viewBox="0 0 24 24" aria-hidden sx={{ width: 24, height: 24, fill: "currentColor" }}>
+      <path d="M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm4 3a1.5 1.5 0 1 0 .01 3A1.5 1.5 0 0 0 12 5zM8.6 10.2h6.8V12H8.6v-1.8zm0 3.2h6.8v1.6H8.6v-1.6zm0 3.1H13v1.6H8.6v-1.6z" />
+    </Box>
+  );
+}
+
 const tabs = [
   { href: "/profile", label: "Profile", icon: ProfileIcon, match: (pathname: string) => pathname === "/profile" || pathname.startsWith("/profile/") },
   { href: "/customers", label: "Customers", icon: CustomersIcon, match: (pathname: string) => pathname === "/customers" || pathname.startsWith("/customers/") },
+  { href: "/team", label: "Team", icon: TeamIcon, match: (pathname: string) => pathname === "/team" || pathname.startsWith("/team/") },
 ] as const;
 
-export default function TabBar() {
+export default function TabBar({ showTeam }: { showTeam: boolean }) {
   const pathname = usePathname();
   if (/^\/customers\/[^/]+/.test(pathname)) return null;
+  const visible = tabs.filter((tab) => tab.href !== "/team" || showTeam);
 
   return (
     <Box
@@ -50,7 +60,7 @@ export default function TabBar() {
         pb: "env(safe-area-inset-bottom)",
       }}
     >
-      {tabs.map((tab) => {
+      {visible.map((tab) => {
         const active = tab.match(pathname);
         const Icon = tab.icon;
         return (

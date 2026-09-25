@@ -1,7 +1,7 @@
 import AppShell from "@/components/AppShell";
-import { signedInName } from "@/lib/csr/signed-in-name";
+import { signedInShell } from "@/lib/csr/signed-in-name";
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
-  const name = await signedInName();
-  return <AppShell name={name}>{children}</AppShell>;
+  const shell = await signedInShell();
+  return <AppShell name={shell?.name ?? null} showTeam={shell?.showTeam ?? false}>{children}</AppShell>;
 }

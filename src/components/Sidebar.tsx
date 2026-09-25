@@ -3,7 +3,7 @@ import Box from "@mui/material/Box";
 import BrandLink from "@/components/BrandLink";
 import SidebarNav from "@/components/SidebarNav";
 
-export default function Sidebar({ name }: { name: string }) {
+export default function Sidebar({ name, showTeam }: { name: string; showTeam: boolean }) {
   return (
     <Box
       component="aside"
@@ -24,7 +24,7 @@ export default function Sidebar({ name }: { name: string }) {
       }}
     >
       <BrandLink width={120} />
-      <SidebarNav />
+      <SidebarNav showTeam={showTeam} />
       <Box sx={{ mt: "auto", pt: 3, display: "flex", flexDirection: "column", gap: 1.5 }}>
         <Link href="/profile" aria-label={`Account, ${name}`} style={{ color: "#717680", fontSize: 14, fontWeight: 500, textDecoration: "none" }}>
           {name}
