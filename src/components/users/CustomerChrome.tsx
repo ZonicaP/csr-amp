@@ -6,10 +6,12 @@ import { usePathname } from "next/navigation";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
+import CallerLink from "@/components/calls/CallerLink";
 import AccountMenu from "@/components/users/AccountMenu";
 import AddVehicle from "@/components/users/AddVehicle";
 import LikelyIssue from "@/components/users/LikelyIssue";
 import SmartDebug from "@/components/users/SmartDebug";
+import type { OpenCall } from "@/lib/calls/call-service";
 import type { AccountIssue, AccountSnapshot, SuggestedAction } from "@/lib/debug/account-issue";
 import { PublishCustomerNav } from "@/components/users/CustomerNavProvider";
 
@@ -36,6 +38,7 @@ export default function CustomerChrome({
   account,
   issue,
   canAddVehicle = false,
+  call = null,
   children,
 }: {
   membershipId: string;
@@ -45,6 +48,7 @@ export default function CustomerChrome({
   account: AccountSnapshot;
   issue: AccountIssue;
   canAddVehicle?: boolean;
+  call?: OpenCall | null;
   children: ReactNode;
 }) {
   const pathname = usePathname();
@@ -95,6 +99,7 @@ export default function CustomerChrome({
             <AccountMenu membershipId={membershipId} actions={actions} maxDiscount={maxDiscount} />
           </Box>
         </Stack>
+        <CallerLink membershipId={membershipId} call={call} />
         {pathname === base ? <LikelyIssue membershipId={membershipId} issue={issue} maxDiscount={maxDiscount} /> : null}
         <Box
           component="nav"

@@ -3,9 +3,10 @@ import DesktopNavbar from "@/components/DesktopNavbar";
 import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
 import TabBar from "@/components/TabBar";
+import type { OpenCall } from "@/lib/calls/call-service";
 import { CustomerNavProvider } from "@/components/users/CustomerNavProvider";
 
-export default function AppShell({ name, showTeam = false, canEscalate = false, call = null, children }: { name: string | null; showTeam?: boolean; canEscalate?: boolean; call?: { reference: string } | null; children: React.ReactNode }) {
+export default function AppShell({ name, showTeam = false, canEscalate = false, call = null, children }: { name: string | null; showTeam?: boolean; canEscalate?: boolean; call?: OpenCall | null; children: React.ReactNode }) {
   return (
     <CustomerNavProvider>
       <Box sx={{ minHeight: "100dvh", display: "flex", flexDirection: "column" }}>

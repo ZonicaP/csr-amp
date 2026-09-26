@@ -1,9 +1,9 @@
-import { lookupOpenCall } from "@/lib/calls/call-service";
+import { lookupOpenCall, type OpenCall } from "@/lib/calls/call-service";
 import { currentCsr } from "@/lib/csr/csr-service";
 import { canEscalateCall, hasPermission } from "@/lib/csr/permissions";
 import { readSession } from "@/lib/csr/session";
 
-export async function signedInShell(): Promise<{ name: string; showTeam: boolean; canEscalate: boolean; call: { reference: string } | null } | null> {
+export async function signedInShell(): Promise<{ name: string; showTeam: boolean; canEscalate: boolean; call: OpenCall | null } | null> {
   const session = await readSession();
   if (!session) {
     return null;

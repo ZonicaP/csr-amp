@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import Box from "@mui/material/Box";
 import BrandLink from "@/components/BrandLink";
 import CallControls from "@/components/calls/CallControls";
+import type { OpenCall } from "@/lib/calls/call-service";
 import { useCustomerNav } from "@/components/users/CustomerNavProvider";
 
 function CustomersIcon() {
@@ -23,7 +24,7 @@ function ProfileIcon() {
   );
 }
 
-export default function Navbar({ name, call, canEscalate = false }: { name: string; call: { reference: string } | null; canEscalate?: boolean }) {
+export default function Navbar({ name, call, canEscalate = false }: { name: string; call: OpenCall | null; canEscalate?: boolean }) {
   const pathname = usePathname();
   const customer = useCustomerNav();
   const onCustomer = /^\/customers\/[^/]+/.test(pathname);

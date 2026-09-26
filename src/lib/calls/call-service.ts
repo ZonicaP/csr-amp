@@ -14,11 +14,18 @@ const eventSelect = {
   user: { select: { membershipId: true, firstName: true, lastName: true } },
 } as const;
 
+export type OpenCall = {
+  reference: string;
+  customer: { membershipId: string; firstName: string; lastName: string } | null;
+};
+
 export function lookupOpenCall(csrId: string) {
-  return prisma.call.findFirst({
-    where: { csrId, status: "OPEN" },
-    select: { reference: true },
-  });
+  return prisma.call
+    .findFirst({
+      where: { csrId, status: "OPEN" },
+      select: { reference: true, user: { select: { membershipId: true, firstName: true, lastName: true } } },
+    })
+    .then((call) => (call ? { reference: call.reference, customer: call.user } : null));
 }
 
 export async function openCall(actorId: string) {
@@ -82,13 +89,38 @@ export async function startCall(actorId: string) {
   throw new CsrError("CONFLICT", "A call reference could not be reserved. Try again");
 }
 
-export async function endCall(actorId: string, input: { gaveReference: boolean; confirmedNothingElse: boolean; notes?: string; membershipId?: string }) {
+export async function linkCaller(actorId: string, membershipId: string) {
+  const actor = await currentCsr(actorId);
+  if (!hasPermission(actor.roles, "customers:read")) {
+    throw new CsrError("FORBIDDEN", "You do not have permission to link a caller");
+  }
+  const call = await prisma.call.findFirst({ where: { csrId: actorId, status: "OPEN" }, select: { id: true, reference: true } });
+  if (!call) throw new CsrError("NOT_FOUND", "There is no open call");
+  const userId = await customerIdFor(membershipId);
+  if (!userId) throw new CsrError("NOT_FOUND", "That customer could not be found");
+  const updated = await prisma.call.updateMany({
+    where: { id: call.id, csrId: actorId, status: "OPEN" },
+    data: { userId },
+  });
+  if (updated.count !== 1) throw new CsrError("CONFLICT", "That call is no longer open");
+  return { reference: call.reference };
+}
+
+export async function unlinkCaller(actorId: string) {
+  await currentCsr(actorId);
+  const updated = await prisma.call.updateMany({
+    where: { csrId: actorId, status: "OPEN" },
+    data: { userId: null },
+  });
+  if (updated.count !== 1) throw new CsrError("NOT_FOUND", "There is no open call");
+}
+
+export async function endCall(actorId: string, input: { gaveReference: boolean; confirmedNothingElse: boolean; notes?: string }) {
   if (input.gaveReference !== true || input.confirmedNothingElse !== true) {
     throw new CsrError("INVALID", "Confirm both closing steps before ending the call");
   }
   const call = await openCallRow(actorId);
   const notes = optionalNote(input.notes);
-  const userId = await customerIdFor(input.membershipId);
   const updated = await prisma.call.updateMany({
     where: { id: call.id, csrId: actorId, status: "OPEN" },
     data: {
@@ -97,23 +129,20 @@ export async function endCall(actorId: string, input: { gaveReference: boolean; 
       gaveReference: true,
       confirmedNothingElse: true,
       closingNotes: notes,
-      ...(userId ? { userId } : {}),
     },
   });
   if (updated.count !== 1) throw new CsrError("CONFLICT", "That call is no longer open");
   return { reference: call.reference };
 }
 
-export async function requestCallback(actorId: string, note: string, membershipId?: string) {
+export async function requestCallback(actorId: string, note: string) {
   const call = await openCallRow(actorId);
-  const userId = await customerIdFor(membershipId);
   const updated = await prisma.call.updateMany({
     where: { id: call.id, csrId: actorId, status: "OPEN" },
     data: {
       status: "CALLBACK",
       endedAt: new Date(),
       callbackNote: requiredNote(note, "Add a note before requesting a call back"),
-      ...(userId ? { userId } : {}),
     },
   });
   if (updated.count !== 1) throw new CsrError("CONFLICT", "That call is no longer open");
@@ -130,7 +159,7 @@ export async function listEscalationSupervisors(actorId: string) {
   });
 }
 
-export async function escalateCall(actorId: string, supervisorId: string, note: string, membershipId?: string) {
+export async function escalateCall(actorId: string, supervisorId: string, note: string) {
   const actor = await currentCsr(actorId);
   if (!canEscalateCall(actor.roles)) throw new CsrError("FORBIDDEN", "Only an agent can escalate a call");
   const callbackNote = requiredNote(note, "Add a note before escalating the call");
@@ -146,7 +175,6 @@ export async function escalateCall(actorId: string, supervisorId: string, note: 
     throw new CsrError("INVALID", "Choose an active supervisor");
   }
   const endedAt = new Date();
-  const userId = await customerIdFor(membershipId);
   const updated = await prisma.call.updateMany({
     where: { id: call.id, csrId: actorId, status: "OPEN" },
     data: {
@@ -156,7 +184,6 @@ export async function escalateCall(actorId: string, supervisorId: string, note: 
       csrId: supervisor.id,
       escalatedAt: endedAt,
       escalatedFromCsrId: actorId,
-      ...(userId ? { userId } : {}),
     },
   });
   if (updated.count !== 1) throw new CsrError("CONFLICT", "That call is no longer open");

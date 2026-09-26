@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import CustomerChrome from "@/components/users/CustomerChrome";
+import { lookupOpenCall } from "@/lib/calls/call-service";
 import { accountIssue, accountSnapshot, duplicateCharge, type SuggestedAction } from "@/lib/debug/account-issue";
 import { hasPermission } from "@/lib/csr/permissions";
 import { maxDiscountPercent } from "@/lib/users/discount";
@@ -23,6 +24,7 @@ export default async function CustomerLayout({ children, params }: { children: R
     );
   }
   const { csr, customer } = loaded;
+  const call = await lookupOpenCall(csr.id);
   const snapshot = accountSnapshot(customer);
   const duplicate = duplicateCharge(snapshot);
   const failedPayment = customer.purchases.find((purchase) => purchase.failureReason);
@@ -42,6 +44,7 @@ export default async function CustomerLayout({ children, params }: { children: R
       actions={actions}
       maxDiscount={maxDiscountPercent(csr.roles)}
       canAddVehicle={hasPermission(csr.roles, "customers:update")}
+      call={call}
       account={snapshot}
       issue={accountIssue(snapshot)}
     >

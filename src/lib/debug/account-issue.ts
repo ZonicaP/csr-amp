@@ -467,7 +467,7 @@ function describeCall(call: AccountCall) {
 function callAnswer(account: AccountSnapshot, question: string): DebugReply {
   const calls = account.calls;
   if (calls.length === 0) {
-    return reply("No call is linked to this account.", "No previous call is linked to this membership. A call is linked when something on the membership changes during the call, or when the call is ended, marked for callback, or escalated from this customer's page.", [
+    return reply("No call is linked to this account.", "No previous call is linked to this membership. A call is linked when the CSR marks this customer as the caller, or when a membership change is made during an open call.", [
       "There is no reference, agent, or note to quote.",
       "Do not invent a call reference or a note.",
     ]);
