@@ -22,6 +22,18 @@ import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { customersCacheKey, useCustomersStore, type CustomersPage } from "@/lib/users/customers-store";
 import { customerMatchesQuery, phoneDigits, searchTokens, type UserListItem } from "@/lib/users/user-list";
 
+function OnCallMark({ call }: { call: UserListItem["onCall"] }) {
+  if (!call) return null;
+  return (
+    <Box
+      component="span"
+      sx={{ display: "inline-flex", ml: 1, px: 1, py: "2px", borderRadius: 999, backgroundColor: "#E7F0FA", color: "#003264", fontSize: 12, fontWeight: 700, whiteSpace: "nowrap", verticalAlign: "middle" }}
+    >
+      On a call · {call.agent}
+    </Box>
+  );
+}
+
 function HighlightPhone({ phone, query }: { phone: string; query: string }) {
   const tokens = searchTokens(query)
     .map(phoneDigits)
@@ -176,7 +188,7 @@ export default function UsersTable() {
                   hover
                   tabIndex={0}
                   role="link"
-                  aria-label={`${user.firstName} ${user.lastName}, ${user.membershipId}`}
+                  aria-label={`${user.firstName} ${user.lastName}, ${user.membershipId}${user.onCall ? `, on a call with ${user.onCall.agent}` : ""}`}
                   onClick={() => openCustomer(user.membershipId)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" || event.key === " ") {
@@ -188,6 +200,7 @@ export default function UsersTable() {
                 >
                   <TableCell>
                     <HighlightMatch text={user.firstName} query={debounced} /> <HighlightMatch text={user.lastName} query={debounced} />
+                    <OnCallMark call={user.onCall} />
                   </TableCell>
                   <TableCell>
                     <HighlightMatch text={user.membershipId} query={debounced} />
@@ -217,7 +230,7 @@ export default function UsersTable() {
             elevation={0}
             tabIndex={0}
             role="link"
-            aria-label={`${user.firstName} ${user.lastName}, ${user.membershipId}`}
+            aria-label={`${user.firstName} ${user.lastName}, ${user.membershipId}${user.onCall ? `, on a call with ${user.onCall.agent}` : ""}`}
             onClick={() => openCustomer(user.membershipId)}
             onKeyDown={(event) => {
               if (event.key === "Enter" || event.key === " ") {
@@ -230,6 +243,7 @@ export default function UsersTable() {
             <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1, alignItems: "center" }}>
               <Typography sx={{ color: "#003264", fontWeight: 600, minWidth: 0 }}>
                 <HighlightMatch text={user.firstName} query={debounced} /> <HighlightMatch text={user.lastName} query={debounced} />
+                <OnCallMark call={user.onCall} />
               </Typography>
               <StatusBadge status={user.status} />
             </Stack>

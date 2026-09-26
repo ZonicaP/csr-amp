@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { currentCsr, CsrError } from "@/lib/csr/csr-service";
 import { hasPermission } from "@/lib/csr/permissions";
 import { AccountUpdateEmail } from "@/lib/email/account-update-email";
+import { customerNoticeTo } from "@/lib/email/customer-recipient";
 import { PaymentRequestEmail } from "@/lib/email/payment-request-email";
 import { appUrl, createEmailService } from "@/lib/email/email-service";
 import { accountDetailChanges, parseAccountDetails, type AccountDetails } from "@/lib/users/account-details";
@@ -66,9 +67,11 @@ function approximateWhere(tokens: string[]) {
 
 async function queryUserPage(db: Queryable, where: Prisma.Sql, page: number): Promise<UserPage> {
   const offset = (page - 1) * USER_PAGE_SIZE;
-  const rows = await db.$queryRaw<Array<UserListItem & { total: number | null }>>`
+  const rows = await db.$queryRaw<Array<Omit<UserListItem, "onCall"> & { total: number | null; onCallReference: string | null; onCallAgent: string | null }>>`
     SELECT page.id, page."membershipId", page."firstName", page."lastName",
-           page.email, page.phone, page.status, counted.total
+           page.email, page.phone, page.status,
+           live.reference AS "onCallReference", live.agent AS "onCallAgent",
+           counted.total
     FROM (SELECT count(*)::int AS total FROM "User" WHERE ${where}) counted
     LEFT JOIN LATERAL (
       SELECT id, "membershipId", "firstName", "lastName", email, phone, status::text AS status
@@ -77,9 +80,23 @@ async function queryUserPage(db: Queryable, where: Prisma.Sql, page: number): Pr
       ORDER BY "lastName" ASC, "firstName" ASC
       LIMIT ${USER_PAGE_SIZE} OFFSET ${offset}
     ) page ON true
+    LEFT JOIN LATERAL (
+      SELECT c.reference, csr."displayName" AS agent
+      FROM "Call" c
+      INNER JOIN "Csr" csr ON csr.id = c."csrId"
+      WHERE page.id IS NOT NULL AND c."userId" = page.id AND c.status = 'OPEN'
+      ORDER BY c."startedAt" DESC
+      LIMIT 1
+    ) live ON true
   `;
   const total = rows[0]?.total ?? 0;
-  const users = rows.flatMap(({ total: _total, ...user }) => (user.id ? [user] : []));
+  const users = rows.flatMap(({ total: _total, onCallReference, onCallAgent, ...user }) => {
+    if (!user.id) return [];
+    return [{
+      ...user,
+      onCall: onCallReference && onCallAgent ? { reference: onCallReference, agent: onCallAgent } : null,
+    }];
+  });
   return { users, total };
 }
 
@@ -153,6 +170,7 @@ export async function sendPaymentLink(actorId: string, membershipId: string, pur
     select: {
       id: true,
       firstName: true,
+      email: true,
       membershipId: true,
       vehicles: { orderBy: { createdAt: "asc" }, take: 1, select: { year: true, make: true, model: true } },
       purchases: { where: { id: purchaseId, failureReason: { not: null } }, select: { description: true, amount: true, failureReason: true } },
@@ -165,7 +183,7 @@ export async function sendPaymentLink(actorId: string, membershipId: string, pur
   if (!customer || !purchase?.failureReason || !payment.ok) throw new CsrError("NOT_FOUND", "That failed payment could not be found");
   const description = payment.description;
   await createEmailService().send(
-    actor.email,
+    customerNoticeTo(customer.email, actor.email).to,
     new PaymentRequestEmail(appUrl(), customer.firstName, description, money.format(Number(purchase.amount)), purchase.failureReason, customer.membershipId),
   );
   await attachCallEvent(link, customer.id, "ACCOUNT_UPDATED", `Payment link sent for ${description}.`);
@@ -202,9 +220,10 @@ export async function updateCustomerDetails(actorId: string, membershipId: strin
       data: { userId: customer.id, type: "ACCOUNT_UPDATED", summary, createdAt: new Date(), ...link },
     }),
   ]);
+  const recipient = customerNoticeTo(next.email, actor.email);
   await createEmailService().send(
-    actor.email,
-    new AccountUpdateEmail(appUrl(), next.firstName, customer.membershipId, changes),
+    recipient.to,
+    new AccountUpdateEmail(appUrl(), next.firstName, customer.membershipId, changes, recipient.sample),
   );
 }
 

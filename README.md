@@ -6,7 +6,7 @@ The app is hosted at [https://csr-amp-ten.vercel.app/](https://csr-amp-ten.verce
 
 Access is invite-only. Email [pietersen.zonica@gmail.com](mailto:pietersen.zonica@gmail.com) to be invited as a CSR. The invite email has a link to set a password. After that, sign in and verify the email address.
 
-For testing, every email about a customer is sent to the CSR who is signed in. It is not sent to the customer. That includes a payment link, a discount offer, cancellation, a refund request, plate documents, a plan change, and an account update. Invite, verification, and password-reset messages are for staff, so those go to the CSR address on that form.
+Email about a customer goes to that customer. A payment link, a discount offer, cancellation, a refund request, plate documents, a plan change, and an account update all follow that rule. Seeded memberships use `@example.com`, which cannot be delivered, so those messages go to the signed-in CSR instead and the email says so. Invite, verification, and password-reset messages are for staff, so those go to the CSR address on that form.
 
 ## Stack
 
@@ -29,9 +29,9 @@ Sign in, reset a forgotten password, and open your profile from the AMP logo. Ho
 
 **Vehicles.** See each vehicle and its plan. Basic Wash, Unlimited Wash, and The Works are color-coded. A cancelled plan uses a cancelled color. Add a vehicle with a year, a make and model suggested from cars, trucks, and SUVs, and a plate. Open a vehicle to change the plate, add or replace the plan, remove a plan, or transfer a plan to another vehicle. One vehicle has one active plan.
 
-**Payments and account actions.** Review charges, including a failed payment and why it failed. Email a payment link. Offer a discount. Cancel a membership only after a confirmation and a reason. Reactivate a cancelled membership. Request a refund when a second charge of the same amount landed within two days. Email plate documents once for the whole account. Those messages arrive in the signed-in CSR’s inbox.
+**Payments and account actions.** Review charges, including a failed payment and why it failed. Email a payment link. Offer a discount. Cancel a membership only after a confirmation and a reason. Reactivate a cancelled membership. Request a refund when a second charge of the same amount landed within two days. Email plate documents once for the whole account. A real address receives the message. A sample `@example.com` address is delivered to the signed-in CSR.
 
-**Calls.** Start a call from the header. On the customer page, **This is the caller** links that membership to the open call. Undo clears a wrong link. End the call after confirming the reference was given and the caller had nothing else. Request a call back from the same dialog. An agent can escalate that callback to an admin. Search calls the same way as customers, filter to callbacks, and mark a callback as called. A customer’s Logs page lists their calls under the account events.
+**Calls.** Start a call from the header. On the customer page, **This is the caller** links that membership to the open call. Undo clears a wrong link. The customer list marks a membership that is on an open call, and names the CSR. **Transfer** moves that open call to another CSR and keeps the same reference. The other CSR already needs a free line, and they see the call after a refresh. End the call after confirming the reference was given and the caller had nothing else. Request a call back from the same dialog. An agent can escalate that callback to an admin. Search calls the same way as customers, filter to callbacks, and mark a callback as called. A customer’s Logs page lists their calls under the account events.
 
 **Smart debug.** On a customer, ask what they are reporting or pick a common issue. A most likely note sits on the Info page. Answers stay on that membership, including coupons, a single wash, a card update, and previous calls. Coupon codes and expiry dates are not invented. The customer redeems coupons, buys a single wash, and changes their card in the AMP app. If a charge failed, the action in this portal is to email a payment link.
 

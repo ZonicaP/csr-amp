@@ -34,4 +34,5 @@ export type UserListItem = {
   phone: string | null;
   membershipId: string;
   status: "ACTIVE" | "OVERDUE" | "CANCELLED";
+  onCall: { reference: string; agent: string } | null;
 };

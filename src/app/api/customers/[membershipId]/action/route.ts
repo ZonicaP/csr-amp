@@ -27,8 +27,8 @@ export const POST = withApi(async function POST(request: Request, { params }: { 
       const parsed = cancellationReason(reason);
       if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
     }
-    await runAccountAction(session.csrId, membershipId, action, { reason, percent: body.percent, period: body.period });
-    return NextResponse.json({ ok: true });
+    const result = await runAccountAction(session.csrId, membershipId, action, { reason, percent: body.percent, period: body.period });
+    return NextResponse.json({ ok: true, sampleAddress: result.sampleAddress });
   } catch (error) {
     return csrErrorResponse(error);
   }

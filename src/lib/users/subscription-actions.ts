@@ -2,6 +2,7 @@ import { openCallLink } from "@/lib/calls/call-service";
 import { prisma } from "@/lib/prisma";
 import { currentCsr, CsrError } from "@/lib/csr/csr-service";
 import { hasPermission } from "@/lib/csr/permissions";
+import { customerNoticeTo } from "@/lib/email/customer-recipient";
 import { SubscriptionChangeEmail } from "@/lib/email/subscription-change-email";
 import { appUrl, createEmailService } from "@/lib/email/email-service";
 import { transferPlan } from "@/lib/users/transfer";
@@ -33,6 +34,7 @@ async function membership(membershipId: string) {
     select: {
       id: true,
       firstName: true,
+      email: true,
       membershipId: true,
       status: true,
       vehicles: {
@@ -91,7 +93,7 @@ export async function runSubscriptionChange(actorId: string, membershipId: strin
       prisma.subscription.create({ data: { vehicleId: vehicle.id, planName: action.planName, status: "ACTIVE", startedAt: new Date() } }),
       prisma.customerEvent.create({ data: { userId: customer.id, type: "PLAN_STARTED", summary, createdAt: new Date(), ...link } }),
     ]);
-    await notify(actor.email, customer.firstName, customer.membershipId, summary);
+    await notify(customer.email, actor.email, customer.firstName, customer.membershipId, summary);
     return;
   }
 
@@ -106,7 +108,7 @@ export async function runSubscriptionChange(actorId: string, membershipId: strin
       prisma.subscription.update({ where: { id: subscription.id }, data: { status: "CANCELLED" } }),
       prisma.customerEvent.create({ data: { userId: customer.id, type: "PLAN_CANCELLED", summary, createdAt: new Date(), ...link } }),
     ]);
-    await notify(actor.email, customer.firstName, customer.membershipId, summary);
+    await notify(customer.email, actor.email, customer.firstName, customer.membershipId, summary);
     return;
   }
 
@@ -115,7 +117,7 @@ export async function runSubscriptionChange(actorId: string, membershipId: strin
     where: { id: action.destinationVehicleId },
     select: {
       ...vehicleSelect,
-      user: { select: { id: true, firstName: true, membershipId: true, status: true } },
+      user: { select: { id: true, firstName: true, email: true, membershipId: true, status: true } },
       subscriptions: { where: { status: "ACTIVE", planName: subscription.planName }, select: { id: true } },
     },
   });
@@ -147,12 +149,16 @@ export async function runSubscriptionChange(actorId: string, membershipId: strin
     prisma.subscription.update({ where: { id: subscription.id }, data: { vehicleId: destination.id } }),
     ...events,
   ]);
-  await notify(actor.email, customer.firstName, customer.membershipId, summary);
+  await notify(customer.email, actor.email, customer.firstName, customer.membershipId, summary);
   if (destination.user.id !== customer.id) {
-    await notify(actor.email, destination.user.firstName, destination.user.membershipId, summary);
+    await notify(destination.user.email, actor.email, destination.user.firstName, destination.user.membershipId, summary);
   }
 }
 
-function notify(to: string, firstName: string, membershipId: string, change: string) {
-  return createEmailService().send(to, new SubscriptionChangeEmail(appUrl(), firstName, membershipId, change));
+function notify(customerEmail: string, actorEmail: string, firstName: string, membershipId: string, change: string) {
+  const recipient = customerNoticeTo(customerEmail, actorEmail);
+  return createEmailService().send(
+    recipient.to,
+    new SubscriptionChangeEmail(appUrl(), firstName, membershipId, change, recipient.sample),
+  );
 }

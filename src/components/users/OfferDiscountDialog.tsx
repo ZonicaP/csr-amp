@@ -20,6 +20,7 @@ export default function OfferDiscountDialog({
   state,
   message,
   maxDiscount,
+  sampleAddress,
   closeLabel,
   onClose,
   onDone,
@@ -29,6 +30,7 @@ export default function OfferDiscountDialog({
   state: "idle" | "sending" | "sent" | "error";
   message: string | null;
   maxDiscount: number | null;
+  sampleAddress: boolean;
   closeLabel: string;
   onClose: () => void;
   onDone: () => void;
@@ -47,7 +49,7 @@ export default function OfferDiscountDialog({
         <Stack spacing={1.5} sx={{ pb: { xs: "max(16px, env(safe-area-inset-bottom))", md: 1 } }}>
           {state === "sent" ? (
             <Typography sx={{ color: "#181D27", fontSize: 14 }}>
-              {discount}% off for {periodLabel} was offered. The email was sent to you.
+              {discount}% off for {periodLabel} was offered. {sampleAddress ? "This membership uses a sample address, so the email was sent to you." : "The email was sent to the member."}
             </Typography>
           ) : (
             <>

@@ -8,6 +8,7 @@ import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import CallDialog from "@/components/calls/CallDialog";
+import TransferCallDialog from "@/components/calls/TransferCallDialog";
 import { AuthRequestError, postJson } from "@/lib/auth/http-client";
 import type { OpenCall } from "@/lib/calls/call-service";
 
@@ -25,6 +26,7 @@ export default function CallControls({
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
+  const [transferOpen, setTransferOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function start() {
@@ -50,6 +52,11 @@ export default function CallControls({
           </Typography>
         ) : null}
         {call ? (
+          <Button variant="outlined" onClick={() => setTransferOpen(true)} sx={compactButton}>
+            Transfer
+          </Button>
+        ) : null}
+        {call ? (
           <Button
             variant="contained"
             onClick={() => setInfoOpen(true)}
@@ -65,7 +72,10 @@ export default function CallControls({
       </Stack>
       {error ? <Alert severity="error" sx={{ py: 0, fontSize: 13 }}>{error}</Alert> : null}
       {call ? (
-        <CallDialog open={infoOpen} reference={call.reference} canEscalate={canEscalate} onClose={() => setInfoOpen(false)} />
+        <>
+          <CallDialog open={infoOpen} reference={call.reference} canEscalate={canEscalate} onClose={() => setInfoOpen(false)} />
+          <TransferCallDialog open={transferOpen} reference={call.reference} onClose={() => setTransferOpen(false)} />
+        </>
       ) : null}
     </Box>
   );

@@ -46,6 +46,7 @@ export default function AccountAction({
   const [offerOpen, setOfferOpen] = useState(false);
   const [dialogKey, setDialogKey] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
+  const [sampleAddress, setSampleAddress] = useState(false);
 
   async function run(extra: Record<string, unknown> = {}) {
     onActivate?.();
@@ -56,12 +57,13 @@ export default function AccountAction({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...action, ...extra }),
     });
+    const body = (await response.json().catch(() => null)) as { error?: string; sampleAddress?: boolean } | null;
     if (!response.ok) {
-      const body = (await response.json().catch(() => null)) as { error?: string } | null;
       setMessage(body?.error ?? "That action could not be completed");
       setState("error");
       return;
     }
+    setSampleAddress(body?.sampleAddress === true);
     setState("sent");
     if (action.type === "cancel-membership" || action.type === "offer-discount" || action.type === "reactivate-membership") {
       router.refresh();
@@ -137,6 +139,7 @@ export default function AccountAction({
           state={state}
           message={message}
           maxDiscount={maxDiscount ?? null}
+          sampleAddress={sampleAddress}
           closeLabel={onReveal ? "Back" : "Close"}
           onClose={reveal}
           onDone={finish}

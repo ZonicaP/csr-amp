@@ -1,6 +1,7 @@
 import { Prisma, type CustomerEventType } from "@prisma/client";
 import { callListWhere } from "@/lib/calls/call-search";
 import { closingCall } from "@/lib/calls/closing";
+import { handoffAllowed } from "@/lib/calls/handoff";
 import { randomCallReference } from "@/lib/calls/reference";
 import { currentCsr, CsrError } from "@/lib/csr/csr-service";
 import { canEscalateCall, hasPermission } from "@/lib/csr/permissions";
@@ -186,6 +187,48 @@ export async function escalateCall(actorId: string, adminId: string, note: strin
     },
   });
   if (updated.count !== 1) throw new CsrError("CONFLICT", "That call is no longer open");
+  return { reference: call.reference };
+}
+
+export async function listHandoffCsrs(actorId: string) {
+  await currentCsr(actorId);
+  const csrs = await prisma.csr.findMany({
+    where: { status: "ACTIVE", id: { not: actorId } },
+    select: {
+      id: true,
+      displayName: true,
+      calls: { where: { status: "OPEN" }, select: { id: true }, take: 1 },
+    },
+    orderBy: [{ surname: "asc" }, { name: "asc" }],
+  });
+  return csrs.map((csr) => ({ id: csr.id, displayName: csr.displayName, available: csr.calls.length === 0 }));
+}
+
+export async function handoffCall(actorId: string, targetId: string) {
+  await currentCsr(actorId);
+  const target = await prisma.csr.findUnique({
+    where: { id: targetId },
+    select: { id: true, status: true, calls: { where: { status: "OPEN" }, select: { id: true }, take: 1 } },
+  });
+  const decision = handoffAllowed({
+    actorId,
+    targetId,
+    targetActive: target?.status === "ACTIVE",
+    targetHasOpenCall: (target?.calls.length ?? 0) > 0,
+  });
+  if (!decision.ok) throw new CsrError(decision.code, decision.error);
+  const call = await openCallRow(actorId);
+  try {
+    const updated = await prisma.call.updateMany({
+      where: { id: call.id, csrId: actorId, status: "OPEN" },
+      data: { csrId: targetId },
+    });
+    if (updated.count !== 1) throw new CsrError("CONFLICT", "That call is no longer open");
+  } catch (error) {
+    if (error instanceof CsrError) throw error;
+    if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") throw error;
+    throw new CsrError("CONFLICT", "That CSR already has an open call");
+  }
   return { reference: call.reference };
 }
 

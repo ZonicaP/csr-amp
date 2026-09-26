@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { currentCsr, CsrError } from "@/lib/csr/csr-service";
 import { hasPermission } from "@/lib/csr/permissions";
 import { appUrl, createEmailService } from "@/lib/email/email-service";
+import { customerNoticeFootnote, customerNoticeTo } from "@/lib/email/customer-recipient";
 import { NoticeEmail } from "@/lib/email/notice-email";
 import type { SuggestedAction } from "@/lib/debug/account-issue";
 import { cancellationAllowed } from "@/lib/users/cancellation";
@@ -11,7 +12,7 @@ import { parseOfferDiscount } from "@/lib/users/discount";
 async function customerFor(membershipId: string) {
   const customer = await prisma.user.findFirst({
     where: { membershipId: { equals: membershipId, mode: "insensitive" } },
-    select: { id: true, firstName: true, membershipId: true, status: true },
+    select: { id: true, firstName: true, membershipId: true, status: true, email: true },
   });
   if (!customer) throw new CsrError("NOT_FOUND", "That customer could not be found");
   return customer;
@@ -43,7 +44,9 @@ export async function runAccountAction(
   const link = await openCallLink(actorId);
   const customer = await customerFor(membershipId);
   const mail = createEmailService();
-  const to = actor.email;
+  const recipient = customerNoticeTo(customer.email, actor.email);
+  const to = recipient.to;
+  const footnote = customerNoticeFootnote(recipient.sample);
 
   if (action.type === "cancel-membership") {
     const cancellation = cancellationAllowed(customer.status, input.reason ?? "");
@@ -71,10 +74,10 @@ export async function runAccountAction(
           `Reason: ${cancellationReason}`,
           "Washes on this membership will no longer start.",
         ],
-        "This confirmation is delivered to the signed-in CSR for this project.",
+        footnote,
       ),
     );
-    return;
+    return { sampleAddress: recipient.sample };
   }
 
   if (action.type === "reactivate-membership") {
@@ -85,7 +88,7 @@ export async function runAccountAction(
       prisma.user.update({ where: { id: customer.id }, data: { status: "ACTIVE" } }),
       prisma.customerEvent.create({ data: { userId: customer.id, type: "PLAN_STARTED", summary: "Membership reactivated by CSR.", createdAt: new Date(), ...link } }),
     ]);
-    return;
+    return { sampleAddress: false };
   }
 
   if (action.type === "offer-discount") {
@@ -103,7 +106,7 @@ export async function runAccountAction(
           `Hi ${customer.firstName}, you can keep this membership at ${offer.percent}% off the current plan price for ${offer.label}.`,
           "Reply to this email if you want the discount applied.",
         ],
-        "This offer email is delivered to the signed-in CSR for this project.",
+        footnote,
       ),
     );
     await prisma.customerEvent.create({
@@ -115,7 +118,7 @@ export async function runAccountAction(
         ...link,
       },
     });
-    return;
+    return { sampleAddress: recipient.sample };
   }
 
   if (action.type === "email-plate-documents") {
@@ -131,13 +134,13 @@ export async function runAccountAction(
         "Documents to update a license plate",
         "Update a license plate",
         [`Hi ${customer.firstName}, to change the plate on this membership we need:`],
-        "This email is delivered to the signed-in CSR for this project.",
+        footnote,
         ["A photo of the new plate", "The vehicle registration", "Proof the vehicle is yours"],
-        [`Email those three documents to ${to} with the subject “${documentSubject}”.`],
+        [`Email those three documents to ${actor.email} with the subject “${documentSubject}”.`],
         false,
       ),
     );
-    return;
+    return { sampleAddress: recipient.sample };
   }
 
   if (action.type === "refund-charge") {
@@ -170,9 +173,13 @@ export async function runAccountAction(
         `Refund ${charge.description} for ${customer.membershipId}`,
         "Refund requested",
         [`A refund was requested for the later ${charge.description} charge of $${Number(charge.amount).toFixed(2)}.`],
-        "This email is delivered to the signed-in CSR. A live setup would send the refund to the card.",
+        recipient.sample
+          ? "This membership uses a sample address, so this email was sent to the signed-in CSR. A live setup would send the refund to the card."
+          : "This email was sent to the member. A live setup would send the refund to the card.",
       ),
     );
-    return;
+    return { sampleAddress: recipient.sample };
   }
+
+  return { sampleAddress: false };
 }
