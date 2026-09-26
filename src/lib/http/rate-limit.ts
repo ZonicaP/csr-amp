@@ -15,24 +15,41 @@ export function decideRateLimit(existing: number[], max: number, windowMs: numbe
 
 export async function updateRateHits(key: string, now: number, update: (hits: number[]) => number[]) {
   const { prisma } = await import("../prisma.ts");
-  return prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0::bigint))`;
-    const row = await tx.rateLimitBucket.findUnique({ where: { key } });
-    const next = update(parseHits(row?.hits));
-    if (next.length === 0) {
-      if (row) await tx.rateLimitBucket.delete({ where: { key } });
-    } else {
-      await tx.rateLimitBucket.upsert({
-        where: { key },
-        create: { key, hits: next },
-        update: { hits: next },
-      });
+  const write = () =>
+    prisma.$transaction(
+      async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0::bigint))`;
+        const row = await tx.rateLimitBucket.findUnique({ where: { key } });
+        const next = update(parseHits(row?.hits));
+        if (next.length === 0) {
+          if (row) await tx.rateLimitBucket.delete({ where: { key } });
+        } else {
+          await tx.rateLimitBucket.upsert({
+            where: { key },
+            create: { key, hits: next },
+            update: { hits: next },
+          });
+        }
+        return next;
+      },
+      { maxWait: 5_000, timeout: 5_000 },
+    );
+  try {
+    const next = await write();
+    if (Math.random() <= 0.05) {
+      void prisma.rateLimitBucket
+        .deleteMany({ where: { updatedAt: { lt: new Date(now - staleAfterMs) } } })
+        .catch(() => undefined);
     }
-    await tx.rateLimitBucket.deleteMany({
-      where: { updatedAt: { lt: new Date(now - staleAfterMs) }, key: { not: key } },
-    });
     return next;
-  });
+  } catch (error) {
+    if (!isTransactionWait(error)) throw error;
+    return write();
+  }
+}
+
+function isTransactionWait(error: unknown) {
+  return typeof error === "object" && error !== null && "code" in error && (error as { code?: string }).code === "P2028";
 }
 
 export async function consumeRateLimit(key: string, max: number, windowMs: number, now = Date.now()) {

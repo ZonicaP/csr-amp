@@ -22,6 +22,7 @@ const footerButton = { ...dialogFooterButton, "&&": { minHeight: 36, py: "6px", 
 const noteLimit = 1000;
 
 type Admin = { id: string; displayName: string };
+type Colleague = { id: string; displayName: string; available: boolean };
 
 export default function CallDialog({
   open,
@@ -35,7 +36,7 @@ export default function CallDialog({
   onClose: () => void;
 }) {
   const router = useRouter();
-  const [pending, setPending] = useState<"end" | "callback" | "escalate" | null>(null);
+  const [pending, setPending] = useState<"end" | "callback" | "escalate" | "transfer" | null>(null);
   const [gaveReference, setGaveReference] = useState(false);
   const [confirmedNothingElse, setConfirmedNothingElse] = useState(false);
   const [notes, setNotes] = useState("");
@@ -43,6 +44,9 @@ export default function CallDialog({
   const [adminId, setAdminId] = useState("");
   const [admins, setAdmins] = useState<Admin[]>([]);
   const [adminError, setAdminError] = useState<string | null>(null);
+  const [csrId, setCsrId] = useState("");
+  const [colleagues, setColleagues] = useState<Colleague[]>([]);
+  const [csrError, setCsrError] = useState<string | null>(null);
   const [dialogError, setDialogError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -54,22 +58,34 @@ export default function CallDialog({
     setAdminId("");
     setAdmins([]);
     setAdminError(null);
+    setCsrId("");
+    setColleagues([]);
+    setCsrError(null);
     setDialogError(null);
-    if (!canEscalate) return;
     let ignore = false;
-    fetch("/api/calls/admins")
-      .then(async (response) => {
-        const data = (await response.json()) as { admins?: Admin[]; error?: string };
-        if (!response.ok) throw new AuthRequestError(data.error ?? "Admins could not be loaded");
-        return data.admins ?? [];
-      })
-      .then((next) => {
-        if (!ignore) setAdmins(next);
+    const colleaguesRequest = fetch("/api/calls/colleagues").then(async (response) => {
+      const data = (await response.json()) as { colleagues?: Colleague[]; error?: string };
+      if (!response.ok) throw new AuthRequestError(data.error ?? "CSRs could not be loaded");
+      return data.colleagues ?? [];
+    });
+    const adminsRequest = canEscalate
+      ? fetch("/api/calls/admins").then(async (response) => {
+          const data = (await response.json()) as { admins?: Admin[]; error?: string };
+          if (!response.ok) throw new AuthRequestError(data.error ?? "Admins could not be loaded");
+          return data.admins ?? [];
+        })
+      : Promise.resolve([] as Admin[]);
+    Promise.all([colleaguesRequest, adminsRequest])
+      .then(([nextColleagues, nextAdmins]) => {
+        if (ignore) return;
+        setColleagues(nextColleagues);
+        setAdmins(nextAdmins);
       })
       .catch((caught: unknown) => {
         if (ignore) return;
+        setColleagues([]);
         setAdmins([]);
-        setDialogError(caught instanceof AuthRequestError ? caught.message : "Admins could not be loaded");
+        setDialogError(caught instanceof AuthRequestError ? caught.message : "CSRs could not be loaded");
       });
     return () => {
       ignore = true;
@@ -107,6 +123,28 @@ export default function CallDialog({
       finish();
     } catch (caught) {
       setDialogError(caught instanceof AuthRequestError ? caught.message : "That call back could not be saved");
+    } finally {
+      setPending(null);
+    }
+  }
+
+  async function submitTransfer() {
+    const available = colleagues.some((colleague) => colleague.available);
+    if (!available) {
+      setCsrError(colleagues.length === 0 ? "No other CSR is available" : "Every other CSR already has an open call");
+      return;
+    }
+    if (csrId.length === 0) {
+      setCsrError("Choose another CSR");
+      return;
+    }
+    setPending("transfer");
+    setDialogError(null);
+    try {
+      await postJson("/api/calls/current", { action: "handoff", csrId });
+      finish();
+    } catch (caught) {
+      setDialogError(caught instanceof AuthRequestError ? caught.message : "That call could not be transferred");
     } finally {
       setPending(null);
     }
@@ -163,6 +201,25 @@ export default function CallDialog({
             minRows={2}
             fullWidth
           />
+          <TextField
+            select
+            label="Transfer to"
+            value={csrId}
+            onChange={(event) => {
+              setCsrId(event.target.value);
+              setCsrError(null);
+            }}
+            error={csrError !== null}
+            helperText={csrError ?? "They keep this reference, and the call stays open. Ask them to refresh."}
+            fullWidth
+          >
+            <MenuItem value="" sx={{ display: "none" }} />
+            {colleagues.map((colleague) => (
+              <MenuItem key={colleague.id} value={colleague.id} disabled={!colleague.available}>
+                {colleague.available ? colleague.displayName : `${colleague.displayName} · On a call`}
+              </MenuItem>
+            ))}
+          </TextField>
           {canEscalate ? (
             <TextField
               select
@@ -192,6 +249,9 @@ export default function CallDialog({
                 {pending === "escalate" ? "Saving…" : "Escalate"}
               </Button>
             ) : null}
+            <Button variant="outlined" onClick={submitTransfer} disabled={pending !== null} sx={footerButton}>
+              {pending === "transfer" ? "Transferring…" : "Transfer"}
+            </Button>
             <Button variant="contained" onClick={end} disabled={pending !== null || !gaveReference || !confirmedNothingElse} sx={footerButton}>
               {pending === "end" ? "Ending…" : "End call"}
             </Button>
