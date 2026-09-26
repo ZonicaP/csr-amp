@@ -30,7 +30,7 @@ export class PaymentRequestEmail extends Email {
       invoice: { description: this.description, amount: this.amount },
       actionLabel: `Pay ${this.amount}`,
       actionUrl: `${this.appUrl}/pay/${encodeURIComponent(this.membershipId)}`,
-      footnote: "This link opens a mock invoice. In a live setup it would open the payment page.",
+      footnote: "This link opens the payment page for the amount due. No card number is entered there.",
     };
   }
 }

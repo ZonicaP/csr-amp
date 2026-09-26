@@ -8,7 +8,7 @@ import { customerNoticeTo } from "@/lib/email/customer-recipient";
 import { PaymentRequestEmail } from "@/lib/email/payment-request-email";
 import { appUrl, createEmailService } from "@/lib/email/email-service";
 import { accountDetailChanges, parseAccountDetails, type AccountDetails } from "@/lib/users/account-details";
-import { overduePaymentDue, paymentLinkDescription } from "@/lib/users/overdue";
+import { overduePaymentDue, paymentLinkDescription, settledOverduePayment } from "@/lib/users/overdue";
 import { parsePlate } from "@/lib/users/plate";
 import { newestVehicleYear, oldestVehicleYear } from "@/lib/users/vehicle-year";
 import { phoneDigits, searchTokens, type UserListItem } from "@/lib/users/user-list";
@@ -324,6 +324,50 @@ export async function publicPaymentDue(membershipId: string) {
     description: due.description,
     amount: money.format(Number(purchase.amount)),
   };
+}
+
+export async function settleOverdueMembership(membershipId: string) {
+  const customer = await prisma.user.findFirst({
+    where: { membershipId: { equals: membershipId, mode: "insensitive" } },
+    select: {
+      id: true,
+      status: true,
+      purchases: {
+        where: { failureReason: { not: null } },
+        orderBy: { purchasedAt: "desc" },
+        take: 1,
+        select: { description: true, amount: true, failureReason: true, vehicleId: true },
+      },
+    },
+  });
+  const purchase = customer?.purchases[0] ?? null;
+  const decision = settledOverduePayment({
+    status: customer?.status ?? "ACTIVE",
+    purchase: purchase
+      ? { description: purchase.description, amount: money.format(Number(purchase.amount)), failureReason: purchase.failureReason }
+      : null,
+  });
+  if (!decision.ok || !customer || !purchase) return decision.ok ? { ok: false as const, error: "Nothing is due on this membership" } : decision;
+  const summary = decision.summary;
+  const settled = await prisma.$transaction(async (tx) => {
+    const updated = await tx.user.updateMany({ where: { id: customer.id, status: "OVERDUE" }, data: { status: "ACTIVE" } });
+    if (updated.count !== 1) return false;
+    await tx.purchase.create({
+      data: {
+        userId: customer.id,
+        vehicleId: purchase.vehicleId,
+        description: purchase.description,
+        amount: purchase.amount,
+        purchasedAt: new Date(),
+      },
+    });
+    await tx.customerEvent.create({
+      data: { userId: customer.id, type: "ACCOUNT_UPDATED", summary, createdAt: new Date() },
+    });
+    return true;
+  });
+  if (!settled) return { ok: false as const, error: "Nothing is due on this membership" };
+  return { ok: true as const };
 }
 
 export function readCustomer(membershipId: string) {

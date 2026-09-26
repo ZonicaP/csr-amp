@@ -401,7 +401,7 @@ function cardAnswer(account: AccountSnapshot): DebugReply {
       "Tell the customer to update the card in the AMP app.",
       `Email the payment link for the ${failed.amount} charge that failed on ${failed.date}.`,
       "Do not ask for or type the card number in this portal.",
-      account.status === "OVERDUE" ? "The membership stays overdue until that payment succeeds." : "The next membership charge uses the card saved in the AMP app.",
+      account.status === "OVERDUE" ? "The membership stays overdue until the payment link is paid. A wash can start after that." : "The next membership charge uses the card saved in the AMP app.",
     ],
   );
 }
