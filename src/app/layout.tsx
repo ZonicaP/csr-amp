@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import SkipLink from "@/components/SkipLink";
 import SplashGate from "@/components/SplashGate";
 import ThemeRegistry from "@/components/ThemeRegistry";
+import UpdatePrompt from "@/components/UpdatePrompt";
 import { manrope } from "@/lib/manrope";
 import { privateRobots, siteDescription, siteUrl } from "@/lib/seo";
 import "./globals.css";
@@ -40,6 +41,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <SkipLink />
         <ThemeRegistry>
           <SplashGate>{children}</SplashGate>
+          <UpdatePrompt />
         </ThemeRegistry>
       </body>
     </html>
