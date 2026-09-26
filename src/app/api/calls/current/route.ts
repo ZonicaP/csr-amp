@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { endCall, escalateCall, requestCallback } from "@/lib/calls/call-service";
+import { endCall, escalateCall, linkCaller, requestCallback, unlinkCaller } from "@/lib/calls/call-service";
 import { csrErrorResponse } from "@/lib/csr/http";
 import { withApi } from "@/lib/http/with-api";
 import { readSession } from "@/lib/csr/session";
@@ -14,12 +14,11 @@ export const POST = withApi(async function POST(request: Request) {
         gaveReference: body.gaveReference === true,
         confirmedNothingElse: body.confirmedNothingElse === true,
         notes: typeof body.notes === "string" ? body.notes : "",
-        membershipId: typeof body.membershipId === "string" ? body.membershipId : undefined,
       });
       return NextResponse.json({ call });
     }
     if (body.action === "callback") {
-      const call = await requestCallback(session.csrId, typeof body.note === "string" ? body.note : "", typeof body.membershipId === "string" ? body.membershipId : undefined);
+      const call = await requestCallback(session.csrId, typeof body.note === "string" ? body.note : "");
       return NextResponse.json({ call });
     }
     if (body.action === "escalate") {
@@ -27,9 +26,19 @@ export const POST = withApi(async function POST(request: Request) {
         session.csrId,
         typeof body.supervisorId === "string" ? body.supervisorId : "",
         typeof body.note === "string" ? body.note : "",
-        typeof body.membershipId === "string" ? body.membershipId : undefined,
       );
       return NextResponse.json({ call });
+    }
+    if (body.action === "link") {
+      if (typeof body.membershipId !== "string" || body.membershipId.trim().length === 0) {
+        return NextResponse.json({ error: "Choose the customer on the call" }, { status: 400 });
+      }
+      const call = await linkCaller(session.csrId, body.membershipId);
+      return NextResponse.json({ call });
+    }
+    if (body.action === "unlink") {
+      await unlinkCaller(session.csrId);
+      return NextResponse.json({ ok: true });
     }
     return NextResponse.json({ error: "That action is not available" }, { status: 400 });
   } catch (error) {

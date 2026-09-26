@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -16,6 +16,7 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { dialogFooterButton } from "@/components/DialogCloseButton";
 import { AuthRequestError, postJson } from "@/lib/auth/http-client";
+import type { OpenCall } from "@/lib/calls/call-service";
 
 const compactButton = { "&&": { minHeight: 36, py: "6px", px: 2, fontSize: 14 } };
 const footerButton = { ...dialogFooterButton, ...compactButton };
@@ -33,24 +34,16 @@ const callDialog = {
 
 type Supervisor = { id: string; displayName: string };
 
-function customerOnScreen(pathname: string) {
-  const match = pathname.match(/^\/customers\/([^/]+)/);
-  if (!match) return undefined;
-  return decodeURIComponent(match[1]);
-}
-
 export default function CallControls({
   call,
   canEscalate = false,
   align = "end",
 }: {
-  call: { reference: string } | null;
+  call: OpenCall | null;
   canEscalate?: boolean;
   align?: "start" | "end";
 }) {
   const router = useRouter();
-  const pathname = usePathname();
-  const membershipId = customerOnScreen(pathname);
   const [pending, setPending] = useState<"start" | "end" | "callback" | "escalate" | null>(null);
   const [infoOpen, setInfoOpen] = useState(false);
   const [gaveReference, setGaveReference] = useState(false);
@@ -112,7 +105,7 @@ export default function CallControls({
     setPending("end");
     setDialogError(null);
     try {
-      await postJson("/api/calls/current", { action: "end", gaveReference: true, confirmedNothingElse: true, notes, membershipId });
+      await postJson("/api/calls/current", { action: "end", gaveReference: true, confirmedNothingElse: true, notes });
       closeInfo();
       router.refresh();
     } catch (caught) {
@@ -130,7 +123,7 @@ export default function CallControls({
     setPending("callback");
     setDialogError(null);
     try {
-      await postJson("/api/calls/current", { action: "callback", note: notes, membershipId });
+      await postJson("/api/calls/current", { action: "callback", note: notes });
       closeInfo();
       router.refresh();
     } catch (caught) {
@@ -150,7 +143,7 @@ export default function CallControls({
     setPending("escalate");
     setDialogError(null);
     try {
-      await postJson("/api/calls/current", { action: "escalate", supervisorId, note: notes, membershipId });
+      await postJson("/api/calls/current", { action: "escalate", supervisorId, note: notes });
       closeInfo();
       router.refresh();
     } catch (caught) {
@@ -165,7 +158,10 @@ export default function CallControls({
       <Box sx={{ display: "flex", flexDirection: "column", alignItems: align === "start" ? "flex-start" : "flex-end", flexShrink: 0, gap: 0.5 }}>
         <Stack direction="row" sx={{ alignItems: "center", gap: 0.75 }}>
           {call ? (
-            <Typography sx={{ color: "#003264", fontWeight: 700, fontSize: 14, letterSpacing: "0.04em" }}>{call.reference}</Typography>
+            <Typography sx={{ color: "#003264", fontWeight: 700, fontSize: 14, letterSpacing: "0.04em" }}>
+              {call.reference}
+              {call.customer ? ` · ${call.customer.firstName}` : ""}
+            </Typography>
           ) : null}
           {call ? (
             <Button

@@ -1,7 +1,8 @@
 import Box from "@mui/material/Box";
 import CallControls from "@/components/calls/CallControls";
+import type { OpenCall } from "@/lib/calls/call-service";
 
-export default function DesktopNavbar({ call, canEscalate = false }: { call: { reference: string } | null; canEscalate?: boolean }) {
+export default function DesktopNavbar({ call, canEscalate = false }: { call: OpenCall | null; canEscalate?: boolean }) {
   return (
     <Box
       component="header"
