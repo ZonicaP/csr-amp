@@ -13,6 +13,7 @@ import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import SendPaymentLink from "@/components/users/SendPaymentLink";
+import { cancelledBadgeSx } from "@/components/StatusBadge";
 
 type VehicleDialogTab = "details" | "plan" | "payments";
 
@@ -25,10 +26,7 @@ function tabPanel(active: boolean) {
   } as const;
 }
 
-const planColor = {
-  ACTIVE: "success",
-  CANCELLED: "default",
-} as const;
+type PlanStatus = "ACTIVE" | "CANCELLED";
 
 const planTone: Record<string, { fill: string; ink: string }> = {
   "Basic Wash": { fill: "#E7F0FA", ink: "#003264" },
@@ -36,7 +34,8 @@ const planTone: Record<string, { fill: string; ink: string }> = {
   "The Works": { fill: "#D5FD6D", ink: "#181D27" },
 };
 
-function planChipSx(name: string) {
+function planChipSx(name: string, status: PlanStatus) {
+  if (status === "CANCELLED") return cancelledBadgeSx;
   const tone = planTone[name] ?? { fill: "#F5F6F7", ink: "#181D27" };
   return {
     height: 24,
@@ -47,10 +46,14 @@ function planChipSx(name: string) {
   };
 }
 
+function cardBadge(plans: VehicleCardPlan[]) {
+  return plans.find((plan) => plan.status === "ACTIVE") ?? plans[0] ?? null;
+}
+
 export type VehicleCardPlan = {
   id: string;
   name: string;
-  status: keyof typeof planColor;
+  status: PlanStatus;
 };
 
 export type VehicleCardDetails = {
@@ -69,6 +72,7 @@ export default function VehicleCard({ name, plate, since, plans, payment, paymen
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<VehicleDialogTab>("details");
   const outstanding = payment === "outstanding";
+  const badge = cardBadge(plans);
 
   return (
     <>
@@ -129,7 +133,7 @@ export default function VehicleCard({ name, plate, since, plans, payment, paymen
                     !
                   </Box>
                 ) : null}
-                {plans[0] ? <Chip size="small" label={plans[0].name} sx={planChipSx(plans[0].name)} /> : null}
+                {badge ? <Chip size="small" label={badge.name} sx={planChipSx(badge.name, badge.status)} /> : null}
               </Stack>
               <Typography sx={{ fontSize: 14 }}>{plate ?? "No plate"}</Typography>
             </Stack>

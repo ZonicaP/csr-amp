@@ -4,7 +4,19 @@ import { csrQuestionAllowed, resetDebugTurns, takeDebugTurn } from "./debug-poli
 
 describe("smart debug scope", () => {
   it("allows membership questions", () => {
-    for (const question of ["Payment was declined", "Wash didn't start", "Charged twice", "Wants to cancel", "Wrong plate or vehicle", "Plan looks wrong"]) {
+    for (const question of [
+      "Payment was declined",
+      "Wash didn't start",
+      "Charged twice",
+      "Wants to cancel",
+      "Wrong plate or vehicle",
+      "Plan looks wrong",
+      "coupon doesn't work",
+      "my coupon expired",
+      "single wash",
+      "update my card",
+      "card declined",
+    ]) {
       assert.equal(csrQuestionAllowed(question), true, question);
     }
   });

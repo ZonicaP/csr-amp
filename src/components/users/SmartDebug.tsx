@@ -26,6 +26,10 @@ const frequentIssues = [
   "Wants to cancel",
   "Wrong plate or vehicle",
   "Plan looks wrong",
+  "Coupon doesn't work",
+  "Coupon expired",
+  "Single wash",
+  "Update my card",
 ];
 
 function actionKey(action: SuggestedAction) {
@@ -321,12 +325,12 @@ export default function SmartDebug({
               <Button
                 variant="outlined"
                 onClick={() => setStep("ask")}
-                sx={dialogFooterButton}
+                sx={{ ...dialogFooterButton, "&&": { minHeight: 36, py: "6px", fontSize: 14 } }}
               >
                 Back
               </Button>
             ) : null}
-            <DialogCloseButton onClick={() => setOpen(false)} />
+            <DialogCloseButton short onClick={() => setOpen(false)} />
           </Stack>
         </Stack>
       </Dialog>

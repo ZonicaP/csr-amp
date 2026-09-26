@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
+import AddVehicle from "@/components/users/AddVehicle";
 import PlateField from "@/components/users/PlateField";
 import VehicleCard from "@/components/users/VehicleCard";
 import VehicleSubscriptions from "@/components/users/VehicleSubscriptions";
@@ -25,6 +27,11 @@ export default async function CustomerVehiclesPage({ params }: { params: Promise
 
   return (
     <Stack spacing={1}>
+      {hasPermission(csr.roles, "customers:update") ? (
+        <Box sx={{ display: { xs: "none", md: "flex" }, justifyContent: "flex-end" }}>
+          <AddVehicle membershipId={customer.membershipId} />
+        </Box>
+      ) : null}
       {customer.vehicles.length === 0 ? <Typography>No vehicles on this account.</Typography> : null}
       {customer.vehicles.map((vehicle) => {
         const plan = [...vehicle.subscriptions].sort((left, right) => left.startedAt.getTime() - right.startedAt.getTime())[0];

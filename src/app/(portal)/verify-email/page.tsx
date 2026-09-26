@@ -28,7 +28,7 @@ export default async function VerifyEmailPage({
   }
   const csr = await currentCsr(session.csrId);
   if (csr.emailVerified) {
-    redirect("/");
+    redirect("/profile");
   }
 
   return (

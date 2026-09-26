@@ -1,11 +1,14 @@
 import { CustomerEventType, Prisma } from "@prisma/client";
+import { attachCallEvent, openCallLink } from "@/lib/calls/call-service";
 import { prisma } from "@/lib/prisma";
 import { currentCsr, CsrError } from "@/lib/csr/csr-service";
 import { hasPermission } from "@/lib/csr/permissions";
 import { AccountUpdateEmail } from "@/lib/email/account-update-email";
+import { PaymentRequestEmail } from "@/lib/email/payment-request-email";
 import { appUrl, createEmailService } from "@/lib/email/email-service";
 import { accountDetailChanges, parseAccountDetails, type AccountDetails } from "@/lib/users/account-details";
 import { parsePlate } from "@/lib/users/plate";
+import { newestVehicleYear, oldestVehicleYear } from "@/lib/users/vehicle-year";
 import { phoneDigits, searchTokens, type UserListItem } from "@/lib/users/user-list";
 
 export const USER_PAGE_SIZE = 10;
@@ -62,20 +65,17 @@ function approximateWhere(tokens: string[]) {
 
 async function queryUserPage(db: Queryable, where: Prisma.Sql, page: number): Promise<UserPage> {
   const offset = (page - 1) * USER_PAGE_SIZE;
-  const rows = await db.$queryRaw<Array<UserListItem & { total: number }>>`
-    WITH matched AS (
+  const rows = await db.$queryRaw<Array<UserListItem & { total: number | null }>>`
+    SELECT page.id, page."membershipId", page."firstName", page."lastName",
+           page.email, page.phone, page.status, counted.total
+    FROM (SELECT count(*)::int AS total FROM "User" WHERE ${where}) counted
+    LEFT JOIN LATERAL (
       SELECT id, "membershipId", "firstName", "lastName", email, phone, status::text AS status
       FROM "User"
       WHERE ${where}
-    )
-    SELECT matched.id, matched."membershipId", matched."firstName", matched."lastName",
-           matched.email, matched.phone, matched.status, counted.total
-    FROM (SELECT count(*)::int AS total FROM matched) counted
-    LEFT JOIN (
-      SELECT * FROM matched
       ORDER BY "lastName" ASC, "firstName" ASC
       LIMIT ${USER_PAGE_SIZE} OFFSET ${offset}
-    ) matched ON true
+    ) page ON true
   `;
   const total = rows[0]?.total ?? 0;
   const users = rows.flatMap(({ total: _total, ...user }) => (user.id ? [user] : []));
@@ -135,20 +135,22 @@ const customerSelect = {
     where: { type: { notIn: [CustomerEventType.PAYMENT_RECEIVED, CustomerEventType.PAYMENT_FAILED] } },
     orderBy: { createdAt: "desc" as const },
     take: 10,
-    select: { id: true, type: true, summary: true, createdAt: true },
+    select: { id: true, type: true, summary: true, createdAt: true, call: { select: { reference: true } } },
   },
 };
 
 const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 
-export async function paymentRequest(actorId: string, membershipId: string, purchaseId: string) {
+export async function sendPaymentLink(actorId: string, membershipId: string, purchaseId: string) {
   const actor = await currentCsr(actorId);
   if (!hasPermission(actor.roles, "customers:read")) {
     throw new CsrError("FORBIDDEN", "You do not have permission for this action");
   }
+  const link = await openCallLink(actorId);
   const customer = await prisma.user.findFirst({
     where: { membershipId: { equals: membershipId, mode: "insensitive" } },
     select: {
+      id: true,
       firstName: true,
       membershipId: true,
       vehicles: { orderBy: { createdAt: "asc" }, take: 1, select: { year: true, make: true, model: true } },
@@ -161,14 +163,12 @@ export async function paymentRequest(actorId: string, membershipId: string, purc
   }
   const vehicle = customer.vehicles[0];
   const vehicleName = vehicle ? [vehicle.year, vehicle.make, vehicle.model].filter(Boolean).join(" ") : "";
-  return {
-    to: actor.email,
-    name: customer.firstName,
-    membershipId: customer.membershipId,
-    description: vehicleName ? `${purchase.description} on ${vehicleName}` : purchase.description,
-    amount: money.format(Number(purchase.amount)),
-    reason: purchase.failureReason,
-  };
+  const description = vehicleName ? `${purchase.description} on ${vehicleName}` : purchase.description;
+  await createEmailService().send(
+    actor.email,
+    new PaymentRequestEmail(appUrl(), customer.firstName, description, money.format(Number(purchase.amount)), purchase.failureReason, customer.membershipId),
+  );
+  await attachCallEvent(link, customer.id, "ACCOUNT_UPDATED", `Payment link sent for ${description}.`);
 }
 
 export async function updateCustomerDetails(actorId: string, membershipId: string, input: { firstName: string; lastName: string; email: string; phone: string }) {
@@ -176,26 +176,30 @@ export async function updateCustomerDetails(actorId: string, membershipId: strin
   if (!hasPermission(actor.roles, "customers:update")) {
     throw new CsrError("FORBIDDEN", "You do not have permission for this action");
   }
+  const link = await openCallLink(actorId);
   const parsed = parseAccountDetails(input);
   if ("error" in parsed) throw new CsrError("INVALID", parsed.error);
-  const customer = await prisma.user.findFirst({
-    where: { membershipId: { equals: membershipId, mode: "insensitive" } },
-    select: { id: true, membershipId: true, firstName: true, lastName: true, email: true, phone: true },
-  });
-  if (!customer) throw new CsrError("NOT_FOUND", "That customer could not be found");
   const next: AccountDetails = parsed.value;
-  const taken = await prisma.user.findFirst({
-    where: { email: { equals: next.email, mode: "insensitive" }, NOT: { id: customer.id } },
-    select: { id: true },
-  });
-  if (taken) throw new CsrError("CONFLICT", "That email is already on another membership");
+  const rows = await prisma.$queryRaw<Array<AccountDetails & { id: string; membershipId: string; taken: boolean }>>`
+    SELECT customer.id, customer."membershipId", customer."firstName", customer."lastName", customer.email, customer.phone,
+           EXISTS (
+             SELECT 1 FROM "User" other
+             WHERE lower(other.email) = lower(${next.email}) AND other.id <> customer.id
+           ) AS taken
+    FROM "User" customer
+    WHERE lower(customer."membershipId") = lower(${membershipId})
+    LIMIT 1
+  `;
+  const customer = rows[0];
+  if (!customer) throw new CsrError("NOT_FOUND", "That customer could not be found");
+  if (customer.taken) throw new CsrError("CONFLICT", "That email is already on another membership");
   const changes = accountDetailChanges(customer, next);
   if (changes.length === 0) return;
   const summary = `Account details updated by CSR. ${changes.join(" ")}`.slice(0, 500);
   await prisma.$transaction([
     prisma.user.update({ where: { id: customer.id }, data: next }),
     prisma.customerEvent.create({
-      data: { userId: customer.id, type: "ACCOUNT_UPDATED", summary, createdAt: new Date() },
+      data: { userId: customer.id, type: "ACCOUNT_UPDATED", summary, createdAt: new Date(), ...link },
     }),
   ]);
   await createEmailService().send(
@@ -209,6 +213,7 @@ export async function updateVehiclePlate(actorId: string, membershipId: string, 
   if (!hasPermission(actor.roles, "customers:update")) {
     throw new CsrError("FORBIDDEN", "You do not have permission for this action");
   }
+  const link = await openCallLink(actorId);
   const parsed = parsePlate(plate);
   if ("error" in parsed) throw new CsrError("INVALID", parsed.error);
   const customer = await prisma.user.findFirst({
@@ -226,7 +231,55 @@ export async function updateVehiclePlate(actorId: string, membershipId: string, 
   await prisma.$transaction([
     prisma.vehicle.update({ where: { id: vehicle.id }, data: { licensePlate: parsed.value } }),
     prisma.customerEvent.create({
-      data: { userId: customer.id, type: "ACCOUNT_UPDATED", summary, createdAt: new Date() },
+      data: { userId: customer.id, type: "ACCOUNT_UPDATED", summary, createdAt: new Date(), ...link },
+    }),
+  ]);
+}
+
+function vehicleText(value: string, label: string) {
+  const text = value.trim().replace(/\s+/g, " ");
+  if (!text || text.length > 40) return { error: `Enter the ${label}` } as const;
+  return { value: text } as const;
+}
+
+export async function createVehicle(
+  actorId: string,
+  membershipId: string,
+  input: { year: string; make: string; model: string; plate: string },
+) {
+  const actor = await currentCsr(actorId);
+  if (!hasPermission(actor.roles, "customers:update")) {
+    throw new CsrError("FORBIDDEN", "You do not have permission for this action");
+  }
+  const link = await openCallLink(actorId);
+  const plate = parsePlate(input.plate);
+  if ("error" in plate) throw new CsrError("INVALID", plate.error);
+  const make = vehicleText(input.make, "make");
+  if ("error" in make) throw new CsrError("INVALID", make.error);
+  const model = vehicleText(input.model, "model");
+  if ("error" in model) throw new CsrError("INVALID", model.error);
+  const yearText = input.year.trim();
+  const year = yearText.length === 0 ? null : Number(yearText);
+  const newest = newestVehicleYear();
+  if (year !== null && (!Number.isInteger(year) || year < oldestVehicleYear || year > newest)) {
+    throw new CsrError("INVALID", `Choose a year from ${oldestVehicleYear} to ${newest}`);
+  }
+  const customer = await prisma.user.findFirst({
+    where: { membershipId: { equals: membershipId, mode: "insensitive" } },
+    select: { id: true, vehicles: { select: { licensePlate: true } } },
+  });
+  if (!customer) throw new CsrError("NOT_FOUND", "That customer could not be found");
+  if (customer.vehicles.some((vehicle) => vehicle.licensePlate?.toUpperCase() === plate.value)) {
+    throw new CsrError("CONFLICT", "That plate is already on this membership");
+  }
+  const label = [year, make.value, model.value].filter(Boolean).join(" ");
+  const summary = `Vehicle added: ${label} (${plate.value}).`.slice(0, 500);
+  await prisma.$transaction([
+    prisma.vehicle.create({
+      data: { userId: customer.id, year, make: make.value, model: model.value, licensePlate: plate.value },
+    }),
+    prisma.customerEvent.create({
+      data: { userId: customer.id, type: "ACCOUNT_UPDATED", summary, createdAt: new Date(), ...link },
     }),
   ]);
 }
@@ -253,13 +306,17 @@ export async function publicPaymentDue(membershipId: string) {
   };
 }
 
+export function readCustomer(membershipId: string) {
+  return prisma.user.findFirst({
+    where: { membershipId: { equals: membershipId, mode: "insensitive" } },
+    select: customerSelect,
+  });
+}
+
 export async function getCustomer(actorId: string, membershipId: string) {
   const actor = await currentCsr(actorId);
   if (!hasPermission(actor.roles, "customers:read")) {
     throw new CsrError("FORBIDDEN", "You do not have permission for this action");
   }
-  return prisma.user.findFirst({
-    where: { membershipId: { equals: membershipId, mode: "insensitive" } },
-    select: customerSelect,
-  });
+  return readCustomer(membershipId);
 }

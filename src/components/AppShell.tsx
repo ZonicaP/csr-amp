@@ -1,14 +1,15 @@
 import Box from "@mui/material/Box";
+import DesktopNavbar from "@/components/DesktopNavbar";
 import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
 import TabBar from "@/components/TabBar";
 import { CustomerNavProvider } from "@/components/users/CustomerNavProvider";
 
-export default function AppShell({ name, showTeam = false, children }: { name: string | null; showTeam?: boolean; children: React.ReactNode }) {
+export default function AppShell({ name, showTeam = false, canEscalate = false, call = null, children }: { name: string | null; showTeam?: boolean; canEscalate?: boolean; call?: { reference: string } | null; children: React.ReactNode }) {
   return (
     <CustomerNavProvider>
       <Box sx={{ minHeight: "100dvh", display: "flex", flexDirection: "column" }}>
-        {name ? <Navbar name={name} /> : null}
+        {name ? <Navbar name={name} call={call} canEscalate={canEscalate} /> : null}
         <Box sx={{ flex: 1, display: "flex", minHeight: 0 }}>
           {name ? <Sidebar name={name} showTeam={showTeam} /> : null}
           <Box
@@ -21,6 +22,7 @@ export default function AppShell({ name, showTeam = false, children }: { name: s
               pb: name ? { xs: "calc(56px + env(safe-area-inset-bottom))", md: 0 } : 0,
             }}
           >
+            {name ? <DesktopNavbar call={call} canEscalate={canEscalate} /> : null}
             {children}
           </Box>
         </Box>

@@ -4,7 +4,9 @@ import type { RenderedEmail } from "./email.ts";
 
 const logoPath = path.join(process.cwd(), "public", "amp-logo-hires.png");
 
-export class EmailDeliveryError extends Error {}
+export class EmailDeliveryError extends Error {
+  readonly brand = "email-delivery" as const;
+}
 
 export type OutboundEmail = RenderedEmail & { to: string };
 

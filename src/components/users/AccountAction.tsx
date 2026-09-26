@@ -11,8 +11,29 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import MenuItem from "@mui/material/MenuItem";
 import DialogCloseButton, { dialogFooterButton } from "@/components/DialogCloseButton";
+import { useCustomerNav } from "@/components/users/CustomerNavProvider";
 import type { SuggestedAction } from "@/lib/debug/account-issue";
 import { offerPeriods, type OfferPeriod } from "@/lib/users/discount";
+
+const compactButton = { "&&": { minHeight: 36, py: "6px", px: 2, fontSize: 14 } };
+
+const cancellationReasons = [
+  "Too expensive",
+  "No longer needs the membership",
+  "Switching to another provider",
+  "Vehicle sold or no longer owned",
+  "Service did not meet expectations",
+  "Other",
+] as const;
+
+const reasonLimit = 200;
+const otherPrefix = "Other: ";
+
+function cancellationSummary(reason: string, notes: string) {
+  if (reason !== "Other") return reason.trim();
+  const text = notes.trim();
+  return text ? `${otherPrefix}${text}`.slice(0, reasonLimit) : "";
+}
 
 const labels: Record<SuggestedAction["type"], string> = {
   "email-payment-link": "Email payment link",
@@ -45,10 +66,13 @@ export default function AccountAction({
   maxDiscount?: number | null;
 }) {
   const router = useRouter();
+  const nav = useCustomerNav();
+  const customerName = nav?.membershipId === membershipId ? nav.name : null;
   const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [cancelOpen, setCancelOpen] = useState(false);
   const [offerOpen, setOfferOpen] = useState(false);
   const [reason, setReason] = useState("");
+  const [notes, setNotes] = useState("");
   const [percent, setPercent] = useState("");
   const [period, setPeriod] = useState<OfferPeriod>("3-months");
   const [message, setMessage] = useState<string | null>(null);
@@ -65,7 +89,7 @@ export default function AccountAction({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(
         action.type === "cancel-membership"
-          ? { ...action, reason: reason.trim() }
+          ? { ...action, reason: cancellationSummary(reason, notes) }
           : action.type === "offer-discount"
             ? { ...action, percent: Number(percent), period }
             : action,
@@ -89,6 +113,7 @@ export default function AccountAction({
     onActivate?.();
     event.stopPropagation();
     setReason("");
+    setNotes("");
     setMessage(null);
     setState("idle");
     setCancelOpen(true);
@@ -160,32 +185,56 @@ export default function AccountAction({
                 Membership {membershipId} has been cancelled. A confirmation email was sent.
               </Typography>
             ) : (
-              <TextField
-                label="Reason for cancellation"
-                value={reason}
-                onChange={(event) => setReason(event.target.value.slice(0, 200))}
-                multiline
-                minRows={2}
-                fullWidth
-                autoFocus
-              />
+              <>
+                <Typography sx={{ color: "#181D27", fontSize: 14 }}>
+                  {customerName ? `${customerName}'s membership ${membershipId}` : `Membership ${membershipId}`} will be cancelled.
+                </Typography>
+                <TextField
+                  select
+                  label="Reason for cancellation"
+                  value={reason}
+                  onChange={(event) => setReason(event.target.value)}
+                  fullWidth
+                  autoFocus
+                >
+                  <MenuItem value="" sx={{ display: "none" }} />
+                  {cancellationReasons.map((item) => (
+                    <MenuItem key={item} value={item}>
+                      {item}
+                    </MenuItem>
+                  ))}
+                </TextField>
+                {reason === "Other" ? (
+                  <TextField
+                    label="Notes"
+                    value={notes}
+                    onChange={(event) => setNotes(event.target.value.slice(0, reasonLimit - otherPrefix.length))}
+                    multiline
+                    minRows={2}
+                    fullWidth
+                    required
+                    autoFocus
+                  />
+                ) : null}
+              </>
             )}
             {message ? <Typography sx={{ color: "#FA4362", fontSize: 14 }}>{message}</Typography> : null}
             <Stack direction="row" spacing={1}>
               {state === "sent" ? (
-                <DialogCloseButton onClick={finish} />
+                <DialogCloseButton short onClick={finish} />
               ) : (
                 <>
-                  <Button variant="outlined" onClick={reveal} disabled={state === "sending"} sx={dialogFooterButton}>
-                    {onReveal ? "Back" : "Close"}
+                  <Button variant="outlined" onClick={reveal} disabled={state === "sending"} sx={{ ...dialogFooterButton, ...compactButton }}>
+                    Keep membership
                   </Button>
                   <Button
                     variant="contained"
+                    color="error"
                     onClick={() => run()}
-                    disabled={state === "sending" || reason.trim().length === 0}
-                    sx={dialogFooterButton}
+                    disabled={state === "sending" || cancellationSummary(reason, notes).length === 0}
+                    sx={{ ...dialogFooterButton, ...compactButton }}
                   >
-                    {state === "sending" ? "Cancelling" : "Cancel"}
+                    {state === "sending" ? "Cancelling" : "Cancel membership"}
                   </Button>
                 </>
               )}

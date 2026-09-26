@@ -161,16 +161,8 @@ export default function VehicleSubscriptions({
           </Button>
         </Stack>
       ) : null}
-      {history.length > 0 ? (
-        <Stack spacing={1.25} sx={current ? { pt: 1.25, borderTop: "1px solid #E5E7EB" } : undefined}>
-          <Typography sx={{ color: "#717680", fontSize: 14, fontWeight: 600 }}>History</Typography>
-          {history.map((plan) => (
-            <PlanSummary key={plan.id} plan={plan} />
-          ))}
-        </Stack>
-      ) : null}
       {canAdd && available.length > 0 ? (
-        <Stack spacing={1} sx={{ pt: 1.25, borderTop: "1px solid #E5E7EB" }}>
+        <Stack spacing={1}>
           <TextField select label="Plan" value={selectedPlan} onChange={(event) => setPlanName(event.target.value as WashPlan)} fullWidth>
             {available.map((plan) => (
               <MenuItem key={plan} value={plan}>
@@ -178,9 +170,17 @@ export default function VehicleSubscriptions({
               </MenuItem>
             ))}
           </TextField>
-          <Button variant="contained" disabled={busy || !selectedPlan} onClick={() => submit({ type: "add", vehicleId, planName: selectedPlan })} sx={{ ...smallButton, alignSelf: "flex-end" }}>
+          <Button variant="contained" fullWidth disabled={busy || !selectedPlan} onClick={() => submit({ type: "add", vehicleId, planName: selectedPlan })} sx={smallButton}>
             {busy ? "Saving" : planLabel}
           </Button>
+        </Stack>
+      ) : null}
+      {history.length > 0 ? (
+        <Stack spacing={1.25} sx={current || (canAdd && available.length > 0) ? { pt: 1.25, borderTop: "1px solid #E5E7EB" } : undefined}>
+          <Typography sx={{ color: "#717680", fontSize: 14, fontWeight: 600 }}>History</Typography>
+          {history.map((plan) => (
+            <PlanSummary key={plan.id} plan={plan} />
+          ))}
         </Stack>
       ) : null}
       {message ? <Typography sx={{ color: "#FA4362", fontSize: 14 }}>{message}</Typography> : null}

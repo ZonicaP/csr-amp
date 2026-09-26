@@ -3,5 +3,5 @@ import { signedInShell } from "@/lib/csr/signed-in-name";
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
   const shell = await signedInShell();
-  return <AppShell name={shell?.name ?? null} showTeam={shell?.showTeam ?? false}>{children}</AppShell>;
+  return <AppShell name={shell?.name ?? null} showTeam={shell?.showTeam ?? false} canEscalate={shell?.canEscalate ?? false} call={shell?.call ?? null}>{children}</AppShell>;
 }

@@ -1,3 +1,4 @@
+import { openCallLink } from "@/lib/calls/call-service";
 import { prisma } from "@/lib/prisma";
 import { currentCsr, CsrError } from "@/lib/csr/csr-service";
 import { hasPermission } from "@/lib/csr/permissions";
@@ -51,7 +52,14 @@ export async function listMembershipVehicles(actorId: string, membershipId: stri
   if (!hasPermission(actor.roles, "customers:read")) {
     throw new CsrError("FORBIDDEN", "You do not have permission for this action");
   }
-  const customer = await membership(membershipId);
+  const customer = await prisma.user.findFirst({
+    where: { membershipId: { equals: membershipId, mode: "insensitive" } },
+    select: {
+      membershipId: true,
+      vehicles: { orderBy: { createdAt: "asc" }, select: vehicleSelect },
+    },
+  });
+  if (!customer) throw new CsrError("NOT_FOUND", "That customer could not be found");
   return {
     membershipId: customer.membershipId,
     vehicles: customer.vehicles.map((vehicle) => ({ id: vehicle.id, label: vehicleLabel(vehicle) })),
@@ -60,6 +68,7 @@ export async function listMembershipVehicles(actorId: string, membershipId: stri
 
 export async function runSubscriptionChange(actorId: string, membershipId: string, action: SubscriptionChange) {
   const actor = await currentCsr(actorId);
+  const link = await openCallLink(actorId);
   const customer = await membership(membershipId);
 
   if (action.type === "add") {
@@ -79,7 +88,7 @@ export async function runSubscriptionChange(actorId: string, membershipId: strin
     await prisma.$transaction([
       ...current.map((plan) => prisma.subscription.update({ where: { id: plan.id }, data: { status: "CANCELLED" } })),
       prisma.subscription.create({ data: { vehicleId: vehicle.id, planName: action.planName, status: "ACTIVE", startedAt: new Date() } }),
-      prisma.customerEvent.create({ data: { userId: customer.id, type: "PLAN_STARTED", summary, createdAt: new Date() } }),
+      prisma.customerEvent.create({ data: { userId: customer.id, type: "PLAN_STARTED", summary, createdAt: new Date(), ...link } }),
     ]);
     await notify(actor.email, customer.firstName, customer.membershipId, summary);
     return;
@@ -94,7 +103,7 @@ export async function runSubscriptionChange(actorId: string, membershipId: strin
     const summary = `${subscription.planName} removed from ${vehicleLabel(subscription.vehicle)}.`;
     await prisma.$transaction([
       prisma.subscription.update({ where: { id: subscription.id }, data: { status: "CANCELLED" } }),
-      prisma.customerEvent.create({ data: { userId: customer.id, type: "PLAN_CANCELLED", summary, createdAt: new Date() } }),
+      prisma.customerEvent.create({ data: { userId: customer.id, type: "PLAN_CANCELLED", summary, createdAt: new Date(), ...link } }),
     ]);
     await notify(actor.email, customer.firstName, customer.membershipId, summary);
     return;
@@ -116,7 +125,7 @@ export async function runSubscriptionChange(actorId: string, membershipId: strin
   const summary = `${subscription.planName} moved from ${vehicleLabel(subscription.vehicle)} on ${customer.membershipId} to ${vehicleLabel(destination)} on ${destination.user.membershipId}.`.slice(0, 500);
   const events = [customer.id, destination.user.id]
     .filter((userId, index, ids) => ids.indexOf(userId) === index)
-    .map((userId) => prisma.customerEvent.create({ data: { userId, type: "ACCOUNT_UPDATED", summary, createdAt: new Date() } }));
+    .map((userId) => prisma.customerEvent.create({ data: { userId, type: "ACCOUNT_UPDATED", summary, createdAt: new Date(), ...link } }));
   await prisma.$transaction([
     prisma.subscription.update({ where: { id: subscription.id }, data: { vehicleId: destination.id } }),
     ...events,

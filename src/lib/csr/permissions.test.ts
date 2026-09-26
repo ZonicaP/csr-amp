@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { hasPermission, permissions, permissionsForRoles } from "./permissions.ts";
+import { canEscalateCall, hasPermission, permissions, permissionsForRoles } from "./permissions.ts";
 
 describe("CSR permissions", () => {
   it("gives an agent customer access and withholds account changes", () => {
@@ -30,5 +30,15 @@ describe("CSR permissions", () => {
     assert.equal(granted.has("customers:update"), true);
     assert.equal(granted.has("billing:resolve-overdue"), true);
     assert.equal(granted.has("csr:manage"), false);
+  });
+
+  it("lets only an agent who is not a supervisor or admin escalate a call", () => {
+    assert.equal(canEscalateCall(["AGENT"]), true);
+    assert.equal(canEscalateCall(["AGENT", "SUPERVISOR"]), false);
+    assert.equal(canEscalateCall(["AGENT", "ADMIN"]), false);
+    assert.equal(canEscalateCall(["SUPERVISOR"]), false);
+    assert.equal(canEscalateCall(["ADMIN"]), false);
+    assert.equal(canEscalateCall(["SUPERVISOR", "ADMIN"]), false);
+    assert.equal(canEscalateCall([]), false);
   });
 });

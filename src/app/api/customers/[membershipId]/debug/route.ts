@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
-import { CsrError } from "@/lib/csr/csr-service";
 import { csrErrorResponse } from "@/lib/csr/http";
+import { withApi } from "@/lib/http/with-api";
 import { readSession } from "@/lib/csr/session";
 import { accountSnapshot } from "@/lib/debug/account-issue";
 import { csrQuestionAllowed, takeDebugTurn } from "@/lib/debug/debug-policy";
-import { DebugUnavailable, debugAccount } from "@/lib/debug/groq-debug";
+import { debugAccount } from "@/lib/debug/groq-debug";
 import { getCustomer } from "@/lib/users/user-service";
 
-export async function POST(request: Request, { params }: { params: Promise<{ membershipId: string }> }) {
+export const POST = withApi(async function POST(request: Request, { params }: { params: Promise<{ membershipId: string }> }) {
   try {
     const session = await readSession();
     if (!session) {
@@ -37,10 +37,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ mem
     const answer = await debugAccount(accountSnapshot(customer), question);
     return NextResponse.json(answer);
   } catch (error) {
-    if (error instanceof DebugUnavailable) {
-      return NextResponse.json({ error: error.message }, { status: 503 });
-    }
-    if (error instanceof CsrError) return csrErrorResponse(error);
-    return NextResponse.json({ error: "Smart debug could not reach Groq. Try again." }, { status: 502 });
+    return csrErrorResponse(error);
   }
-}
+}, { auth: "required", limit: "standard" });

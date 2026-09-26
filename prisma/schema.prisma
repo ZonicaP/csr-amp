@@ -34,6 +34,7 @@ model User {
   vehicles  Vehicle[]
   purchases Purchase[]
   events    CustomerEvent[]
+  calls     Call[]
 
   @@index([lastName, firstName])
   @@index([firstName(ops: raw("gin_trgm_ops"))], type: Gin, map: "User_firstName_trgm_idx")
@@ -57,6 +58,8 @@ model Vehicle {
   updatedAt     DateTime       @updatedAt
   subscriptions Subscription[]
   purchases     Purchase[]
+
+  @@index([userId, createdAt])
 }
 
 model Subscription {
@@ -68,6 +71,8 @@ model Subscription {
   startedAt DateTime           @default(now())
   createdAt DateTime           @default(now())
   updatedAt DateTime           @updatedAt
+
+  @@index([vehicleId, startedAt])
 }
 
 model Purchase {
@@ -83,6 +88,7 @@ model Purchase {
   createdAt     DateTime  @default(now())
 
   @@index([vehicleId])
+  @@index([userId, purchasedAt])
 }
 
 enum CustomerEventType {
@@ -100,11 +106,49 @@ model CustomerEvent {
   id        String            @id @default(cuid())
   userId    String
   user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  csrId     String?
+  csr       Csr?              @relation(fields: [csrId], references: [id], onDelete: SetNull)
+  callId    String?
+  call      Call?             @relation(fields: [callId], references: [id], onDelete: SetNull)
   type      CustomerEventType
   summary   String
   createdAt DateTime
 
   @@index([userId, createdAt])
+  @@index([callId])
+  @@index([csrId])
+}
+
+enum CallStatus {
+  OPEN
+  CLOSED
+  CALLBACK
+}
+
+model Call {
+  id                   String          @id @default(cuid())
+  reference            String          @unique
+  csrId                String
+  csr                  Csr             @relation("CallCsr", fields: [csrId], references: [id], onDelete: Restrict)
+  status               CallStatus      @default(OPEN)
+  startedAt            DateTime        @default(now())
+  endedAt              DateTime?
+  gaveReference        Boolean         @default(false)
+  confirmedNothingElse Boolean         @default(false)
+  closingNotes         String?
+  callbackNote         String?
+  resolvedAt           DateTime?
+  escalatedAt          DateTime?
+  escalatedFromCsrId   String?
+  escalatedFrom        Csr?            @relation("CallEscalatedFrom", fields: [escalatedFromCsrId], references: [id], onDelete: SetNull)
+  userId               String?
+  user                 User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  events               CustomerEvent[]
+
+  @@index([csrId, status])
+  @@index([startedAt])
+  @@index([escalatedFromCsrId])
+  @@index([userId])
 }
 
 enum CsrStatus {
@@ -133,6 +177,9 @@ model Csr {
   emailVerifiedAt            DateTime?
   emailVerificationTokenHash String?   @unique
   roles           CsrRole[]
+  calls           Call[] @relation("CallCsr")
+  escalatedCalls  Call[] @relation("CallEscalatedFrom")
+  events          CustomerEvent[]
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
 }

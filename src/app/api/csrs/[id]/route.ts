@@ -2,12 +2,13 @@ import { NextResponse } from "next/server";
 import { CsrRoleName, CsrStatus } from "@prisma/client";
 import { cancelInvite, updateCsrAccess } from "@/lib/csr/csr-service";
 import { csrErrorResponse } from "@/lib/csr/http";
+import { withApi } from "@/lib/http/with-api";
 import { readSession } from "@/lib/csr/session";
 
 const roleNames = new Set<string>(Object.values(CsrRoleName));
 const statuses = new Set<string>(Object.values(CsrStatus));
 
-export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
+export const PATCH = withApi(async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const session = await readSession();
     if (!session) {
@@ -34,9 +35,9 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   } catch (error) {
     return csrErrorResponse(error);
   }
-}
+}, { auth: "required", limit: "standard" });
 
-export async function DELETE(_request: Request, context: { params: Promise<{ id: string }> }) {
+export const DELETE = withApi(async function DELETE(_request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const session = await readSession();
     if (!session) {
@@ -48,4 +49,4 @@ export async function DELETE(_request: Request, context: { params: Promise<{ id:
   } catch (error) {
     return csrErrorResponse(error);
   }
-}
+}, { auth: "required", limit: "standard" });

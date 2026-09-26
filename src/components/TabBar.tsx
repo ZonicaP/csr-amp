@@ -17,6 +17,14 @@ function CustomersIcon() {
   );
 }
 
+function CallsIcon() {
+  return (
+    <Box component="svg" viewBox="0 0 24 24" aria-hidden sx={{ width: 24, height: 24, fill: "currentColor" }}>
+      <path d="M6.6 10.8a15 15 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.3 11 11 0 0 0 3.6.6 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1 11 11 0 0 0 .6 3.6 1 1 0 0 1-.3 1L6.6 10.8Z" />
+    </Box>
+  );
+}
+
 function TeamIcon() {
   return (
     <Box component="svg" viewBox="0 0 24 24" aria-hidden sx={{ width: 24, height: 24, fill: "currentColor" }}>
@@ -27,6 +35,7 @@ function TeamIcon() {
 
 const tabs = [
   { href: "/customers", label: "Customers", icon: CustomersIcon, match: (pathname: string) => pathname === "/customers" || pathname.startsWith("/customers/") },
+  { href: "/calls", label: "Calls", icon: CallsIcon, match: (pathname: string) => pathname === "/calls" || pathname.startsWith("/calls/") },
   { href: "/team", label: "Team", icon: TeamIcon, match: (pathname: string) => pathname === "/team" || pathname.startsWith("/team/") },
 ] as const;
 

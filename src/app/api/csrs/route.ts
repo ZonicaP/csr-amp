@@ -6,6 +6,7 @@ import { readSession } from "@/lib/csr/session";
 import { InviteEmail } from "@/lib/email/invite-email";
 import { EmailDeliveryError } from "@/lib/email/smtp-transport";
 import { appUrl, createEmailService } from "@/lib/email/email-service";
+import { withApi } from "@/lib/http/with-api";
 
 const roleNames = new Set<string>(Object.values(CsrRoleName));
 
@@ -13,7 +14,7 @@ function isRoleList(value: unknown): value is CsrRoleName[] {
   return Array.isArray(value) && value.every((role) => typeof role === "string" && roleNames.has(role));
 }
 
-export async function GET() {
+export const GET = withApi(async function GET() {
   try {
     const session = await readSession();
     if (!session) {
@@ -24,9 +25,9 @@ export async function GET() {
   } catch (error) {
     return csrErrorResponse(error);
   }
-}
+}, { auth: "required", limit: "standard" });
 
-export async function POST(request: Request) {
+export const POST = withApi(async function POST(request: Request) {
   try {
     const session = await readSession();
     if (!session) {
@@ -56,13 +57,11 @@ export async function POST(request: Request) {
       );
     } catch (error) {
       await deleteUnactivatedInvite(result.csr.id);
-      if (error instanceof EmailDeliveryError) {
-        return NextResponse.json({ error: error.message }, { status: 502 });
-      }
+      if (error instanceof EmailDeliveryError) return csrErrorResponse(error);
       throw error;
     }
     return NextResponse.json({ csr: result.csr }, { status: 201 });
   } catch (error) {
     return csrErrorResponse(error);
   }
-}
+}, { auth: "required", limit: "auth" });

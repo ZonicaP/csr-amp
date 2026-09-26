@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { csrErrorResponse } from "@/lib/csr/http";
+import { withApi } from "@/lib/http/with-api";
 import { readSession } from "@/lib/csr/session";
 import { updateVehiclePlate } from "@/lib/users/user-service";
 
-export async function PATCH(request: Request, { params }: { params: Promise<{ membershipId: string; vehicleId: string }> }) {
+export const PATCH = withApi(async function PATCH(request: Request, { params }: { params: Promise<{ membershipId: string; vehicleId: string }> }) {
   try {
     const session = await readSession();
     if (!session) return NextResponse.json({ error: "Sign in as an active CSR" }, { status: 401 });
@@ -15,4 +16,4 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ me
   } catch (error) {
     return csrErrorResponse(error);
   }
-}
+}, { auth: "required", limit: "standard" });
