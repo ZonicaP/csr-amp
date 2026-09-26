@@ -70,14 +70,6 @@ export default function CustomerChrome({
     >
       <PublishCustomerNav name={name} membershipId={membershipId} account={account} issue={issue} maxDiscount={maxDiscount} />
       <Stack spacing={2} sx={{ width: "100%", maxWidth: 720, mx: "auto" }}>
-        <Stack direction="row" sx={{ display: { xs: "flex", md: "none" }, justifyContent: "space-between", alignItems: "center", gap: 1 }}>
-          <Box component={NextLink} href="/customers" sx={{ flexShrink: 0, color: "#0B75E1", fontWeight: 600, fontSize: 14, textDecoration: "none" }}>
-            ← Customers
-          </Box>
-          <Typography noWrap sx={{ minWidth: 0, color: "#003264", fontWeight: 600, fontSize: 14, textAlign: "right" }}>
-            {name}
-          </Typography>
-        </Stack>
         <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1, alignItems: "flex-start" }}>
           <Typography
             component="h1"

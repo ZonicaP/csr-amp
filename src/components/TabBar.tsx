@@ -17,14 +17,6 @@ function CustomersIcon() {
   );
 }
 
-function ProfileIcon() {
-  return (
-    <Box component="svg" viewBox="0 0 24 24" aria-hidden sx={{ width: 24, height: 24, fill: "currentColor" }}>
-      <path d="M12 12.2a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 7.1c.6-3 3-4.8 7-4.8s6.4 1.8 7 4.8a1 1 0 0 1-1 1.2H6a1 1 0 0 1-1-1.2Z" />
-    </Box>
-  );
-}
-
 function TeamIcon() {
   return (
     <Box component="svg" viewBox="0 0 24 24" aria-hidden sx={{ width: 24, height: 24, fill: "currentColor" }}>
@@ -34,7 +26,6 @@ function TeamIcon() {
 }
 
 const tabs = [
-  { href: "/profile", label: "Profile", icon: ProfileIcon, match: (pathname: string) => pathname === "/profile" || pathname.startsWith("/profile/") },
   { href: "/customers", label: "Customers", icon: CustomersIcon, match: (pathname: string) => pathname === "/customers" || pathname.startsWith("/customers/") },
   { href: "/team", label: "Team", icon: TeamIcon, match: (pathname: string) => pathname === "/team" || pathname.startsWith("/team/") },
 ] as const;
