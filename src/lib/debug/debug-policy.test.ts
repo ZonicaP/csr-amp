@@ -16,6 +16,8 @@ describe("smart debug scope", () => {
       "single wash",
       "update my card",
       "card declined",
+      "Previous calls",
+      "what about C-74779",
     ]) {
       assert.equal(csrQuestionAllowed(question), true, question);
     }

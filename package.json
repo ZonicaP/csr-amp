@@ -15,7 +15,7 @@
     "db:stop": "supabase stop",
     "db:deploy": "prisma migrate deploy",
     "db:seed": "prisma db seed",
-    "test": "node --experimental-strip-types --test src/lib/csr/permissions.test.ts src/lib/csr/team-search.test.ts src/lib/calls/reference.test.ts src/lib/calls/call-search.test.ts src/lib/email/email.test.ts src/lib/debug/account-issue.test.ts src/lib/debug/debug-policy.test.ts src/lib/users/account-details.test.ts src/lib/users/wash-plans.test.ts src/lib/users/plate.test.ts src/lib/users/discount.test.ts src/lib/http/api-guard.test.ts"
+    "test": "node --experimental-strip-types --test src/lib/csr/permissions.test.ts src/lib/csr/team-search.test.ts src/lib/calls/reference.test.ts src/lib/calls/call-search.test.ts src/lib/email/email.test.ts src/lib/debug/account-issue.test.ts src/lib/debug/debug-policy.test.ts src/lib/users/account-details.test.ts src/lib/users/wash-plans.test.ts src/lib/users/plate.test.ts src/lib/users/discount.test.ts src/lib/http/api-guard.test.ts src/lib/vehicles/names.test.ts"
   },
   "dependencies": {
     "@ai-sdk/groq": "^4.0.48",

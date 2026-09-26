@@ -5,7 +5,7 @@ const abuse =
   /ignore (all |any |the )?(previous|prior|above) instructions|system prompt|jailbreak|you are now|act as|developer mode|write (me )?(code|a poem|an essay|a story|python|javascript)|recipe|weather|translate this|homework|bitcoin|api key|password/i;
 
 const membership =
-  /\b(membership|member|account|customer|wash|payment|charge|charged|refund|plate|vehicle|plan|cancel|overdue|declin|card|invoice|subscription|reactivat|discount|bay|machine|visit|outstanding|twice|double|coupon|promo)\b/i;
+  /\b(membership|member|account|customer|wash|payment|charge|charged|refund|plate|vehicle|plan|cancel|overdue|declin|card|invoice|subscription|reactivat|discount|bay|machine|visit|outstanding|twice|double|coupon|promo|calls?|callback|reference)\b|\bc-\d{5}\b/i;
 
 const turns = new Map<string, number[]>();
 

@@ -31,7 +31,7 @@ export async function openCallLink(csrId: string) {
     where: { csrId, status: "OPEN" },
     select: { id: true },
   });
-  if (!call) throw new CsrError("CONFLICT", "Start a call before changing a membership");
+  if (!call) return { csrId };
   return { callId: call.id, csrId };
 }
 
@@ -41,13 +41,20 @@ export async function callLink(actorId: string) {
 }
 
 export async function attachCallEvent(
-  link: { callId: string; csrId: string },
+  link: { callId?: string; csrId: string },
   userId: string,
   type: CustomerEventType,
   summary: string,
 ) {
   await prisma.customerEvent.create({
-    data: { userId, type, summary: summary.slice(0, 500), createdAt: new Date(), callId: link.callId, csrId: link.csrId },
+    data: {
+      userId,
+      type,
+      summary: summary.slice(0, 500),
+      createdAt: new Date(),
+      csrId: link.csrId,
+      ...(link.callId ? { callId: link.callId } : {}),
+    },
   });
 }
 
@@ -255,24 +262,49 @@ export async function getCall(actorId: string, reference: string) {
   };
 }
 
+function customerCallWhere(membershipId: string): Prisma.CallWhereInput {
+  return {
+    OR: [
+      { user: { membershipId: { equals: membershipId, mode: "insensitive" } } },
+      { events: { some: { user: { membershipId: { equals: membershipId, mode: "insensitive" } } } } },
+    ],
+  };
+}
+
 export async function callsForCustomer(actorId: string, membershipId: string) {
   const actor = await currentCsr(actorId);
   if (!hasPermission(actor.roles, "customers:read")) {
     throw new CsrError("FORBIDDEN", "You do not have permission to look up calls");
   }
   return prisma.call.findMany({
-    where: {
-      OR: [
-        { user: { membershipId: { equals: membershipId, mode: "insensitive" } } },
-        { events: { some: { user: { membershipId: { equals: membershipId, mode: "insensitive" } } } } },
-      ],
-    },
+    where: customerCallWhere(membershipId),
     orderBy: { startedAt: "desc" },
-    take: 20,
     select: {
       reference: true,
       status: true,
       startedAt: true,
+      csr: { select: { displayName: true } },
+    },
+  });
+}
+
+export async function callContextForCustomer(actorId: string, membershipId: string) {
+  const actor = await currentCsr(actorId);
+  if (!hasPermission(actor.roles, "customers:read")) {
+    throw new CsrError("FORBIDDEN", "You do not have permission to look up calls");
+  }
+  return prisma.call.findMany({
+    where: customerCallWhere(membershipId),
+    orderBy: { startedAt: "desc" },
+    take: 15,
+    select: {
+      reference: true,
+      status: true,
+      startedAt: true,
+      endedAt: true,
+      closingNotes: true,
+      callbackNote: true,
+      escalatedAt: true,
       csr: { select: { displayName: true } },
     },
   });

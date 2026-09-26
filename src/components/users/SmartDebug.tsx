@@ -30,6 +30,7 @@ const frequentIssues = [
   "Coupon expired",
   "Single wash",
   "Update my card",
+  "Previous calls",
 ];
 
 function actionKey(action: SuggestedAction) {

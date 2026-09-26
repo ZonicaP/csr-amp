@@ -18,6 +18,17 @@ export type AccountIssue = {
   actions: SuggestedAction[];
 };
 
+export type AccountCall = {
+  reference: string;
+  status: "Open" | "Callback" | "Closed";
+  started: string;
+  ended: string | null;
+  agent: string;
+  closingNotes: string | null;
+  callbackNote: string | null;
+  escalated: boolean;
+};
+
 export type AccountSnapshot = {
   name: string;
   membershipId: string;
@@ -25,7 +36,8 @@ export type AccountSnapshot = {
   joined: string;
   vehicles: { id: string; name: string; plate: string | null; plans: { name: string; status: string; since: string }[] }[];
   payments: { id: string; description: string; amount: string; date: string; failureReason: string | null }[];
-  logs: { summary: string; date: string }[];
+  logs: { summary: string; date: string; call?: string }[];
+  calls: AccountCall[];
 };
 
 type AccountRecord = {
@@ -43,14 +55,36 @@ type AccountRecord = {
     subscriptions: { planName: string; status: string; startedAt: Date }[];
   }[];
   purchases: { id: string; description: string; amount: { toString(): string }; failureReason: string | null; purchasedAt: Date }[];
-  events: { summary: string; createdAt: Date }[];
+  events: { summary: string; createdAt: Date; call?: { reference: string } | null }[];
+};
+
+export type CallContext = {
+  reference: string;
+  status: "OPEN" | "CLOSED" | "CALLBACK";
+  startedAt: Date;
+  endedAt: Date | null;
+  closingNotes: string | null;
+  callbackNote: string | null;
+  escalatedAt: Date | null;
+  csr: { displayName: string };
 };
 
 function vehicleName(vehicle: AccountRecord["vehicles"][number]) {
   return [vehicle.year, vehicle.make, vehicle.model].filter(Boolean).join(" ") || "Vehicle";
 }
 
-export function accountSnapshot(customer: AccountRecord): AccountSnapshot {
+function callStatus(status: CallContext["status"]): AccountCall["status"] {
+  if (status === "CALLBACK") return "Callback";
+  if (status === "OPEN") return "Open";
+  return "Closed";
+}
+
+function savedNote(note: string | null) {
+  const trimmed = note?.trim() ?? "";
+  return trimmed.length > 0 ? trimmed.slice(0, 500) : null;
+}
+
+export function accountSnapshot(customer: AccountRecord, calls: CallContext[] = []): AccountSnapshot {
   return {
     name: `${customer.firstName} ${customer.lastName}`,
     membershipId: customer.membershipId,
@@ -76,6 +110,17 @@ export function accountSnapshot(customer: AccountRecord): AccountSnapshot {
     logs: customer.events.map((event) => ({
       summary: event.summary,
       date: date.format(event.createdAt),
+      ...(event.call?.reference ? { call: event.call.reference } : {}),
+    })),
+    calls: calls.map((call) => ({
+      reference: call.reference,
+      status: callStatus(call.status),
+      started: date.format(call.startedAt),
+      ended: call.endedAt ? date.format(call.endedAt) : null,
+      agent: call.csr.displayName,
+      closingNotes: savedNote(call.closingNotes),
+      callbackNote: savedNote(call.callbackNote),
+      escalated: call.escalatedAt !== null,
     })),
   };
 }
@@ -386,6 +431,7 @@ function cancelAnswer(account: AccountSnapshot): DebugReply {
   return reply("Customer wants to cancel.", `${planPhrase(account)} is ${word}. Cancelling stops the membership wash. A discount can be offered before cancelling.`, [
     "Confirm they want to cancel.",
     "Offer a discount if that would keep the membership.",
+    "A reason is required, and that reason is saved on the account log.",
     "Cancel only after they confirm.",
   ]);
 }
@@ -402,6 +448,83 @@ function duplicateAnswer(account: AccountSnapshot): DebugReply {
     "Charged twice",
     `A second ${duplicate.description} charge of ${duplicate.amount} on ${duplicate.date} looks like a duplicate.`,
     ["Request a refund for that second charge.", "Confirm the two charges with the customer before sending the refund."],
+  );
+}
+
+const callPattern = /\bcalls?\b|callback|call back|\bc-\d{5}\b|last agent|who handled|who spoke/i;
+
+function describeCall(call: AccountCall) {
+  const notes = [
+    call.callbackNote ? `Callback note: ${call.callbackNote}` : "",
+    call.closingNotes ? `Closing note: ${call.closingNotes}` : "",
+  ].filter(Boolean);
+  const escalated = call.escalated ? " It was escalated." : "";
+  const ended = call.ended ? `, ended ${call.ended}` : "";
+  const saved = notes.length > 0 ? ` ${notes.join(" ")}` : " No note was saved on that call.";
+  return `${call.reference} is ${call.status.toLowerCase()}, handled by ${call.agent}, started ${call.started}${ended}.${escalated}${saved}`;
+}
+
+function callAnswer(account: AccountSnapshot, question: string): DebugReply {
+  const calls = account.calls;
+  if (calls.length === 0) {
+    return reply("No call is linked to this account.", "No previous call is linked to this membership. A call is linked when something on the membership changes during the call, or when the call is ended, marked for callback, or escalated from this customer's page.", [
+      "There is no reference, agent, or note to quote.",
+      "Do not invent a call reference or a note.",
+    ]);
+  }
+  const wanted = question.match(/\bc-\d{5}\b/i)?.[0]?.toUpperCase();
+  const named = wanted ? calls.find((call) => call.reference === wanted) : undefined;
+  if (wanted && !named) {
+    return reply(`${wanted} is not linked to this account.`, `Calls on this account: ${calls.map((call) => `${call.reference} (${call.status})`).join(", ")}. ${wanted} is not one of them.`, [
+      "Use only a reference listed on this account.",
+      "Do not invent a call or a note.",
+    ]);
+  }
+  const callback = calls.find((call) => call.status === "Callback");
+  if (/callback|call back/.test(question) && !named && !callback) {
+    const earlier = calls.slice(1, 5);
+    const more = earlier.length > 0 ? ` Earlier calls: ${earlier.map((call) => `${call.reference} (${call.status})`).join(", ")}.` : "";
+    return reply("No callback is waiting on this account.", `${describeCall(calls[0])}${more}`, [
+      "No callback note is waiting.",
+      `Open ${calls[0].reference} if the customer asks what was said.`,
+      "Do not invent a reference, agent, or note.",
+    ]);
+  }
+  const focus = named ?? (/callback|call back/.test(question) ? callback : undefined) ?? calls[0];
+  const others = calls.filter((call) => call.reference !== focus.reference).slice(0, 4);
+  const headline = focus.status === "Callback" ? `${focus.reference} still needs a call back.` : `${focus.reference} was handled by ${focus.agent}.`;
+  const otherLine = others.length > 0 ? ` Other calls: ${others.map((call) => `${call.reference} on ${call.started} with ${call.agent} (${call.status})`).join("; ")}.` : "";
+  return reply(headline, `${describeCall(focus)}${otherLine}`, [
+    focus.callbackNote ? `Use the callback note on ${focus.reference}. Do not add details that are not in it.` : false,
+    focus.closingNotes ? `The closing note on ${focus.reference} is what the agent flagged before ending the call.` : false,
+    focus.status === "Callback" ? `${focus.reference} is still a callback until someone marks it called.` : false,
+    `Open ${focus.reference} for the full call.`,
+    "Do not invent a reference, agent, or note.",
+  ]);
+}
+
+function addVehicleAnswer(account: AccountSnapshot): DebugReply {
+  const count = account.vehicles.length;
+  const listed = count === 0 ? "No vehicle is on this account yet." : `This account already has ${count} vehicle${count === 1 ? "" : "s"}.`;
+  return reply("A vehicle can be added on the Vehicles page.", listed, [
+    "Add it from Vehicles. Year, make, and model can be chosen from the catalog, and a plate is required.",
+    "No plan is added with the vehicle. Open the vehicle and add a plan after it is saved.",
+    "A plate already on this membership cannot be added again.",
+  ]);
+}
+
+function planAnswer(account: AccountSnapshot): DebugReply {
+  const lines = account.vehicles.map((vehicle) => {
+    const plans = vehicle.plans.map((plan) => `${plan.name} (${plan.status})`).join(", ");
+    return `${vehicle.name}: ${plans || "no plan"}`;
+  });
+  return reply(
+    "One active plan per vehicle.",
+    lines.length > 0 ? `${lines.join("; ")}. Adding a plan replaces the active plan. A cancelled plan stays on the vehicle.` : "No vehicle is on this account.",
+    [
+      "Adding a plan replaces the active plan on that vehicle.",
+      "A cancelled plan stays on the vehicle with status CANCELLED.",
+    ],
   );
 }
 
@@ -424,10 +547,20 @@ export function fallbackDebugAnswer(account: AccountSnapshot, question: string):
   if (couponPattern.test(text)) return couponAnswer(account, text);
   if (singleWashPattern.test(text)) return singleWashAnswer(account);
   if (cardPattern.test(text)) return cardAnswer(account);
+  if (callPattern.test(text)) return callAnswer(account, text);
+  if (/add (a |another )?vehicle|new vehicle/.test(text)) return addVehicleAnswer(account);
   if (/plate|vehicle number|wrong vehicle/.test(text)) return plateAnswer(account);
+  if (/\bplan\b/.test(text)) return planAnswer(account);
   if (/twice|double charge|refund/.test(text)) return duplicateAnswer(account);
   if (/cancel/.test(text)) return cancelAnswer(account);
   if (/declin|outstanding|didn't start|did not start|wash/.test(text)) return billingAnswer(account);
   const standing = accountIssue(account);
-  return reply(standing.headline, standing.detail, [standing.detail, "Ask a follow-up about the wash, payment, plate, coupon, or card if this does not match what the customer said."]);
+  const callback = account.calls.find((call) => call.status === "Callback");
+  const latest = account.calls[0];
+  return reply(standing.headline, standing.detail, [
+    standing.detail,
+    callback ? `${callback.reference} still needs a call back from ${callback.agent}.` : false,
+    !callback && latest ? `Latest linked call is ${latest.reference} with ${latest.agent} on ${latest.started}.` : false,
+    "Ask a follow-up about the wash, payment, plate, coupon, card, or a previous call if this does not match what the customer said.",
+  ]);
 }
