@@ -236,10 +236,10 @@ export async function updateVehiclePlate(actorId: string, membershipId: string, 
   ]);
 }
 
-function vehicleText(value: string, label: string) {
+function vehicleText(value: string, label: string): { value: string } | { error: string } {
   const text = value.trim().replace(/\s+/g, " ");
-  if (!text || text.length > 40) return { error: `Enter the ${label}` } as const;
-  return { value: text } as const;
+  if (!text || text.length > 40) return { error: `Enter the ${label}` };
+  return { value: text };
 }
 
 export async function createVehicle(
