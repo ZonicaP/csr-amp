@@ -1,6 +1,43 @@
 # CSR AMP
 
-Customer service portal for AMP memberships. Next.js, Material UI, Prisma, and Postgres.
+Customer service portal for AMP car-wash memberships. CSRs look up a member, handle the call, and change the account from one place.
+
+The app is hosted at [https://csr-amp-ten.vercel.app/](https://csr-amp-ten.vercel.app/).
+
+Access is invite-only. Email [pietersen.zonica@gmail.com](mailto:pietersen.zonica@gmail.com) to be invited as a CSR. The invite email has a link to set a password. After that, sign in and verify the email address.
+
+## Stack
+
+- Next.js (App Router) and React
+- Material UI
+- REST API routes
+- PostgreSQL, hosted on Supabase
+- Prisma
+- Vercel, with a deploy on push to `main` that applies migrations
+- SMTP email
+- Groq, for Smart debug answers when an API key is configured
+
+The project was built with Grok 4.7. Two local skill files guide that work: Vercel’s React best practices, and an AMP theme skill taken from the [AMP Memberships](https://ampmemberships.com/) site for color, type, and buttons.
+
+## What you can do
+
+Sign in, reset a forgotten password, and open your profile from the AMP logo. Home and profile are the same page.
+
+**Customers.** Search by name, email, phone, or membership id. Results update as you type. Open a customer for Info, Vehicles, Payments, and Logs. Edit their contact details. The address looks like `/customers/AMP-10033`.
+
+**Vehicles.** See each vehicle and its plan. Basic Wash, Unlimited Wash, and The Works are color-coded. A cancelled plan uses a cancelled color. Add a vehicle with a year, a make and model suggested from cars, trucks, and SUVs, and a plate. Open a vehicle to change the plate, add or replace the plan, remove a plan, or transfer a plan to another vehicle. One vehicle has one active plan.
+
+**Payments and account actions.** Review charges, including a failed payment and why it failed. Email a payment link. Offer a discount. Cancel a membership only after a confirmation and a reason. Reactivate a cancelled membership. Request a refund when a second charge of the same amount landed within two days. Email plate documents once for the whole account.
+
+Emails that would go to the customer are delivered to the signed-in CSR instead, so the flow can be tried without mailing members. The staff invite is the exception: it goes to the person being invited.
+
+**Calls.** Start a call from the header. On the customer page, **This is the caller** links that membership to the open call. Undo clears a wrong link. End the call after confirming the reference was given and the caller had nothing else. Request a call back from the same dialog. An agent can escalate to a supervisor. Search calls the same way as customers, filter to callbacks, and mark a callback as called. A customer’s Logs page lists their calls under the account events.
+
+**Smart debug.** On a customer, ask what they are reporting or pick a common issue. A most likely note sits on the Info page. Answers stay on that membership, including coupons, a single wash, a card update, and previous calls. Coupon codes and expiry dates are not invented. The customer redeems coupons, buys a single wash, and changes their card in the AMP app. If a charge failed, the action in this portal is to email a payment link.
+
+**Team.** Supervisors and admins can see the team. An admin invites CSRs, assigns roles, and can disable an account.
+
+Roles combine. An agent can look up customers, edit contact details, and add a plan. A supervisor can also cancel, transfer, and resolve an overdue payment. An admin can do all of that and manage staff.
 
 ## Prerequisites
 
@@ -82,11 +119,9 @@ npm run db:deploy
 
 Do not commit `.env`.
 
-## CSR accounts
+## Local CSR account
 
-CSRs do not sign themselves up. Seed the first admin, then that admin invites everyone else and assigns roles.
-
-Add these to `.env` as well:
+On a fresh local database there is no one to sign in as until the first admin is seeded. Add these to `.env`:
 
 ```bash
 AUTH_SECRET="replace-with-a-long-random-string"
@@ -102,9 +137,9 @@ Then:
 npm run db:seed
 ```
 
-Sign in with `POST /api/auth/session` using that email and password. Invite another CSR with `POST /api/csrs`. That sends an invite email with a link to create the account. After the account is created, a verification email is sent. Password resets send a link by email.
+Sign in with that email and password. Invite another CSR from Team. For the hosted app, ask for an invite at [pietersen.zonica@gmail.com](mailto:pietersen.zonica@gmail.com) instead of seeding.
 
-To send those emails, add an SMTP mailbox to `.env`:
+To send invite, verification, and password-reset emails, add an SMTP mailbox to `.env`:
 
 ```bash
 APP_URL="http://localhost:3000"
@@ -115,4 +150,4 @@ SMTP_PASSWORD="replace-with-the-mailbox-password"
 EMAIL_FROM="AMP CSR <mailer@example.com>"
 ```
 
-Local and production both deliver to the address on the CSR account. Without these values, the app reports that email is not configured and does not pretend the message was sent.
+Without these values, the app reports that email is not configured and does not pretend the message was sent. Smart debug still answers from the account when `GROQ_API_KEY` is absent.
