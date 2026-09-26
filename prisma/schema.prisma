@@ -159,7 +159,6 @@ enum CsrStatus {
 
 enum CsrRoleName {
   ADMIN
-  SUPERVISOR
   AGENT
 }
 
@@ -190,4 +189,12 @@ model CsrRole {
   role  CsrRoleName
 
   @@id([csrId, role])
+}
+
+model RateLimitBucket {
+  key       String   @id
+  hits      Json
+  updatedAt DateTime @updatedAt
+
+  @@index([updatedAt])
 }

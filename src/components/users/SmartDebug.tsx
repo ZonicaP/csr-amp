@@ -2,36 +2,13 @@
 
 import { useState } from "react";
 import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
-import Chip from "@mui/material/Chip";
-import Dialog from "@mui/material/Dialog";
-import DialogContent from "@mui/material/DialogContent";
-import DialogTitle from "@mui/material/DialogTitle";
-import Stack from "@mui/material/Stack";
-import TextField from "@mui/material/TextField";
-import Typography from "@mui/material/Typography";
-import DialogCloseButton, { dialogFooterButton } from "@/components/DialogCloseButton";
 import AccountAction from "@/components/users/AccountAction";
-import LikelyIssue from "@/components/users/LikelyIssue";
 import SendPaymentLink from "@/components/users/SendPaymentLink";
+import SmartDebugDialog, { type DebugAnswer } from "@/components/users/SmartDebugDialog";
 import { actionsForQuestion, type AccountIssue, type AccountSnapshot, type SuggestedAction } from "@/lib/debug/account-issue";
-
-const frequentIssues = [
-  "Payment was declined",
-  "Wash didn't start",
-  "Charged twice",
-  "Wants to cancel",
-  "Wrong plate or vehicle",
-  "Plan looks wrong",
-  "Coupon doesn't work",
-  "Coupon expired",
-  "Single wash",
-  "Update my card",
-  "Previous calls",
-];
 
 function actionKey(action: SuggestedAction) {
   if (action.type === "email-payment-link" || action.type === "refund-charge") return `${action.type}-${action.purchaseId}`;
@@ -60,12 +37,6 @@ function IssueAction({
   }
   return <AccountAction membershipId={membershipId} action={action} appearance={appearance} maxDiscount={maxDiscount} onCover={onCover} onReveal={onReveal} onDone={onDone} />;
 }
-
-type DebugAnswer = {
-  likelyIssue: string;
-  summary: string;
-  steps: string[];
-};
 
 export default function SmartDebug({
   membershipId,
@@ -211,130 +182,48 @@ export default function SmartDebug({
         </svg>
       </IconButton>
       )}
-      <Dialog
+      <SmartDebugDialog
         open={open && !covered}
-        keepMounted
-        onClose={() => setOpen(false)}
-        fullWidth
-        maxWidth="sm"
-        sx={{
-          "& .MuiDialog-container": { alignItems: { xs: "flex-end", md: "center" } },
-          "& .MuiDialog-paper": {
-            m: { xs: 0, md: 4 },
-            width: { xs: "100%", md: "calc(100% - 64px)" },
-            maxWidth: { xs: "100%", md: 560 },
-            maxHeight: { xs: "92dvh", md: "calc(100% - 64px)" },
-            borderRadius: { xs: "16px 16px 0 0", md: 2 },
-            display: "flex",
-            flexDirection: "column",
-          },
-          "& .MuiDialogTitle-root + .MuiDialogContent-root": { pt: 2 },
+        membershipId={membershipId}
+        issue={issue}
+        question={question}
+        selected={selected}
+        answer={answer}
+        error={error}
+        pending={pending}
+        showAsk={showAsk}
+        showResults={showResults}
+        mobile={mobile}
+        step={step}
+        reported={reported}
+        maxDiscount={maxDiscount}
+        onQuestion={(value) => {
+          setQuestion(value);
+          setSelected(null);
         }}
-      >
-        <DialogTitle sx={{ color: "#003264", pb: 1 }}>Smart debug</DialogTitle>
-        <DialogContent>
-          <Stack spacing={1.5}>
-            {showAsk ? (
-              <>
-            <TextField
-              label="What is the customer reporting?"
-              placeholder="Or pick a common issue below"
-              value={question}
-              onChange={(event) => {
-                setQuestion(event.target.value);
-                setSelected(null);
-              }}
-              multiline
-              minRows={2}
-              maxRows={4}
-              fullWidth
-            />
-            <Stack direction="row" sx={{ flexWrap: "wrap", gap: 1 }}>
-              {frequentIssues.map((label) => {
-                const active = selected === label;
-                return (
-                  <Chip
-                    key={label}
-                    label={label}
-                    variant="outlined"
-                    onClick={() => {
-                      setSelected(label);
-                      setQuestion(label);
-                    }}
-                    sx={{
-                      borderColor: active ? "#0B75E1" : "#E5E7EB",
-                      backgroundColor: active ? "rgba(11, 117, 225, 0.08)" : "#FFFFFF",
-                      color: active ? "#003264" : "#181D27",
-                      fontWeight: 600,
-                    }}
-                  />
-                );
-              })}
-            </Stack>
-            <Button
-              variant="contained"
-              onClick={ask}
-              disabled={pending || question.trim().length === 0}
-              sx={{ alignSelf: "flex-end", "&&": { minHeight: 36, py: "6px", px: 2, fontSize: 14 } }}
-            >
-              {pending ? "Looking" : "Debug"}
-            </Button>
-              </>
-            ) : null}
-            {showResults && pending && !answer ? (
-              <Typography sx={{ color: "#717680", fontSize: 14 }}>Looking</Typography>
-            ) : null}
-            {showResults && answer ? (
-              <Stack spacing={1} sx={{ pt: 0.5 }}>
-                <Typography sx={{ color: "#181D27", fontSize: 14 }}>{answer.summary}</Typography>
-                {reported.length > 0 ? (
-                  <Stack direction="row" sx={{ flexWrap: "wrap", gap: 1 }}>
-                    {reported.map((action) => (
-                      <IssueAction
-                        key={actionKey(action)}
-                        membershipId={membershipId}
-                        action={action}
-                        appearance="button"
-                        onCover={() => setCovered(true)}
-                        onReveal={() => setCovered(false)}
-                        maxDiscount={maxDiscount}
-                        onDone={() => {
-                          setCovered(false);
-                          setOpen(false);
-                        }}
-                      />
-                    ))}
-                  </Stack>
-                ) : null}
-                <Typography sx={{ color: "#003264", fontWeight: 600, fontSize: 14 }}>What to do</Typography>
-                {answer.steps.map((step, index) => (
-                  <Typography key={`${index}-${step}`} sx={{ color: "#181D27", fontSize: 14 }}>
-                    {index + 1}. {step}
-                  </Typography>
-                ))}
-              </Stack>
-            ) : null}
-            {showResults && error ? (
-              <Typography sx={{ color: "#FA4362", fontSize: 14 }}>{error}</Typography>
-            ) : null}
-          </Stack>
-        </DialogContent>
-        <Stack spacing={1.25} sx={{ px: 3, pt: 1, pb: { xs: "max(16px, env(safe-area-inset-bottom))", md: 2 } }}>
-          <LikelyIssue membershipId={membershipId} issue={issue} maxDiscount={maxDiscount} headline={answer?.likelyIssue} />
-          <Stack direction="row" spacing={1}>
-            {mobile && step === "results" ? (
-              <Button
-                variant="outlined"
-                onClick={() => setStep("ask")}
-                sx={{ ...dialogFooterButton, "&&": { minHeight: 36, py: "6px", fontSize: 14 } }}
-              >
-                Back
-              </Button>
-            ) : null}
-            <DialogCloseButton short onClick={() => setOpen(false)} />
-          </Stack>
-        </Stack>
-      </Dialog>
+        onSelect={(label) => {
+          setSelected(label);
+          setQuestion(label);
+        }}
+        onAsk={ask}
+        onBack={() => setStep("ask")}
+        onClose={() => setOpen(false)}
+        actionKey={actionKey}
+        renderAction={(action) => (
+          <IssueAction
+            membershipId={membershipId}
+            action={action}
+            appearance="button"
+            onCover={() => setCovered(true)}
+            onReveal={() => setCovered(false)}
+            maxDiscount={maxDiscount}
+            onDone={() => {
+              setCovered(false);
+              setOpen(false);
+            }}
+          />
+        )}
+      />
     </>
   );
 }

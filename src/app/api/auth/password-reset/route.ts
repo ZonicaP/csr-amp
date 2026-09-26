@@ -14,12 +14,12 @@ export const POST = withApi(async function POST(request: Request) {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
     }
     const email = body.email.toLowerCase();
-    const limited = authBlocked(`reset:${email}`, 5);
+    const limited = await authBlocked(`reset:${email}`, 5);
     if (!limited.ok) {
       const minutes = Math.max(1, Math.ceil(limited.retryAfter / 60));
       return NextResponse.json({ error: `Too many reset emails. Try again in ${minutes} minute${minutes === 1 ? "" : "s"}.` }, { status: 429 });
     }
-    recordAuthFailure(`reset:${email}`);
+    await recordAuthFailure(`reset:${email}`);
     const result = await requestPasswordReset(email);
     if (result.token && result.name) {
       try {

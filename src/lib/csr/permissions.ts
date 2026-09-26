@@ -19,19 +19,13 @@ const agentPermissions: Permission[] = [
   "purchases:read",
   "subscriptions:read",
   "customers:update",
-];
-
-const supervisorPermissions: Permission[] = [
-  ...agentPermissions,
   "subscriptions:cancel",
   "subscriptions:transfer",
   "billing:resolve-overdue",
-  "csr:read",
 ];
 
 export const rolePermissions: Record<CsrRoleName, readonly Permission[]> = {
   AGENT: agentPermissions,
-  SUPERVISOR: supervisorPermissions,
   ADMIN: permissions,
 };
 
@@ -50,5 +44,5 @@ export function hasPermission(roles: readonly CsrRoleName[], permission: Permiss
 }
 
 export function canEscalateCall(roles: readonly CsrRoleName[]): boolean {
-  return roles.includes("AGENT") && !roles.includes("SUPERVISOR") && !roles.includes("ADMIN");
+  return roles.includes("AGENT") && !roles.includes("ADMIN");
 }

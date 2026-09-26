@@ -1,25 +1,27 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { mapApiError } from "./api-error.ts";
-import { clientRateKey, consumeRateLimit, resetRateLimits } from "./rate-limit.ts";
+import { clientRateKey, decideRateLimit } from "./rate-limit.ts";
 
 describe("request rate limit", () => {
   it("blocks one client after the max and leaves another client alone", () => {
-    resetRateLimits();
     const start = Date.UTC(2026, 0, 1);
-    assert.equal(consumeRateLimit("ip:login", 2, 1000, start).ok, true);
-    assert.equal(consumeRateLimit("ip:login", 2, 1000, start + 10).ok, true);
-    const blocked = consumeRateLimit("ip:login", 2, 1000, start + 20);
+    const first = decideRateLimit([], 2, 1000, start);
+    const second = decideRateLimit(first.hits, 2, 1000, start + 10);
+    const blocked = decideRateLimit(second.hits, 2, 1000, start + 20);
+    assert.equal(first.ok, true);
+    assert.equal(second.ok, true);
     assert.equal(blocked.ok, false);
     if (!blocked.ok) assert.ok(blocked.retryAfter > 0);
-    assert.equal(consumeRateLimit("other:login", 2, 1000, start + 20).ok, true);
+    assert.equal(decideRateLimit([], 2, 1000, start + 20).ok, true);
   });
 
   it("allows requests again after the window", () => {
-    resetRateLimits();
     const start = Date.UTC(2026, 0, 1);
-    assert.equal(consumeRateLimit("ip:search", 1, 1000, start).ok, true);
-    assert.equal(consumeRateLimit("ip:search", 1, 1000, start + 1000).ok, true);
+    const first = decideRateLimit([], 1, 1000, start);
+    const next = decideRateLimit(first.hits, 1, 1000, start + 1000);
+    assert.equal(first.ok, true);
+    assert.equal(next.ok, true);
   });
 
   it("keys by ip, method, path, and actor", () => {

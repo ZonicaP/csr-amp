@@ -18,7 +18,7 @@ export function withApi<C>(
       if (options.limit !== "none") {
         const rule = options.limit === "auth" ? authLimit : standardLimit;
         const key = clientRateKey(request, session?.csrId);
-        const limited = consumeRateLimit(key, rule.max, rule.windowMs);
+        const limited = await consumeRateLimit(key, rule.max, rule.windowMs);
         if (!limited.ok) {
           return NextResponse.json(
             { error: "Too many requests. Try again later." },

@@ -7,6 +7,7 @@ import { AccountUpdateEmail } from "@/lib/email/account-update-email";
 import { PaymentRequestEmail } from "@/lib/email/payment-request-email";
 import { appUrl, createEmailService } from "@/lib/email/email-service";
 import { accountDetailChanges, parseAccountDetails, type AccountDetails } from "@/lib/users/account-details";
+import { overduePaymentDue, paymentLinkDescription } from "@/lib/users/overdue";
 import { parsePlate } from "@/lib/users/plate";
 import { newestVehicleYear, oldestVehicleYear } from "@/lib/users/vehicle-year";
 import { phoneDigits, searchTokens, type UserListItem } from "@/lib/users/user-list";
@@ -157,13 +158,12 @@ export async function sendPaymentLink(actorId: string, membershipId: string, pur
       purchases: { where: { id: purchaseId, failureReason: { not: null } }, select: { description: true, amount: true, failureReason: true } },
     },
   });
-  const purchase = customer?.purchases[0];
-  if (!customer || !purchase?.failureReason) {
-    throw new CsrError("NOT_FOUND", "That failed payment could not be found");
-  }
-  const vehicle = customer.vehicles[0];
+  const purchase = customer?.purchases[0] ?? null;
+  const vehicle = customer?.vehicles[0];
   const vehicleName = vehicle ? [vehicle.year, vehicle.make, vehicle.model].filter(Boolean).join(" ") : "";
-  const description = vehicleName ? `${purchase.description} on ${vehicleName}` : purchase.description;
+  const payment = paymentLinkDescription(purchase, vehicleName);
+  if (!customer || !purchase?.failureReason || !payment.ok) throw new CsrError("NOT_FOUND", "That failed payment could not be found");
+  const description = payment.description;
   await createEmailService().send(
     actor.email,
     new PaymentRequestEmail(appUrl(), customer.firstName, description, money.format(Number(purchase.amount)), purchase.failureReason, customer.membershipId),
@@ -291,17 +291,18 @@ export async function publicPaymentDue(membershipId: string) {
       firstName: true,
       membershipId: true,
       vehicles: { orderBy: { createdAt: "asc" }, take: 1, select: { year: true, make: true, model: true } },
-      purchases: { where: { failureReason: { not: null } }, orderBy: { purchasedAt: "desc" }, take: 1, select: { description: true, amount: true } },
+      purchases: { where: { failureReason: { not: null } }, orderBy: { purchasedAt: "desc" }, take: 1, select: { description: true, amount: true, failureReason: true } },
     },
   });
-  const purchase = customer?.purchases[0];
-  if (!customer || !purchase) return null;
-  const vehicle = customer.vehicles[0];
+  const purchase = customer?.purchases[0] ?? null;
+  const vehicle = customer?.vehicles[0];
   const vehicleName = vehicle ? [vehicle.year, vehicle.make, vehicle.model].filter(Boolean).join(" ") : "";
+  const due = overduePaymentDue(customer ? "OVERDUE" : "ACTIVE", purchase, vehicleName);
+  if (!customer || !purchase || !due) return null;
   return {
     name: customer.firstName,
     membershipId: customer.membershipId,
-    description: vehicleName ? `${purchase.description} on ${vehicleName}` : purchase.description,
+    description: due.description,
     amount: money.format(Number(purchase.amount)),
   };
 }

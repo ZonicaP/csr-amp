@@ -14,13 +14,14 @@ function isRoleList(value: unknown): value is CsrRoleName[] {
   return Array.isArray(value) && value.every((role) => typeof role === "string" && roleNames.has(role));
 }
 
-export const GET = withApi(async function GET() {
+export const GET = withApi(async function GET(request: Request) {
   try {
     const session = await readSession();
     if (!session) {
       return NextResponse.json({ error: "Sign in as an active CSR" }, { status: 401 });
     }
-    const csrs = await listCsrs(session.csrId);
+    const query = new URL(request.url).searchParams.get("q") ?? "";
+    const csrs = await listCsrs(session.csrId, query);
     return NextResponse.json({ csrs });
   } catch (error) {
     return csrErrorResponse(error);

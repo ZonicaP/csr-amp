@@ -24,7 +24,7 @@ export const POST = withApi(async function POST(request: Request) {
     if (body.action === "escalate") {
       const call = await escalateCall(
         session.csrId,
-        typeof body.supervisorId === "string" ? body.supervisorId : "",
+        typeof body.adminId === "string" ? body.adminId : "",
         typeof body.note === "string" ? body.note : "",
       );
       return NextResponse.json({ call });

@@ -5,6 +5,7 @@ import { hasPermission } from "@/lib/csr/permissions";
 import { appUrl, createEmailService } from "@/lib/email/email-service";
 import { NoticeEmail } from "@/lib/email/notice-email";
 import type { SuggestedAction } from "@/lib/debug/account-issue";
+import { cancellationAllowed } from "@/lib/users/cancellation";
 import { parseOfferDiscount } from "@/lib/users/discount";
 
 async function customerFor(membershipId: string) {
@@ -45,10 +46,10 @@ export async function runAccountAction(
   const to = actor.email;
 
   if (action.type === "cancel-membership") {
-    const cancellationReason = (input.reason ?? "").trim();
-    if (!cancellationReason) throw new CsrError("INVALID", "Add a reason for the cancellation");
+    const cancellation = cancellationAllowed(customer.status, input.reason ?? "");
+    if (!cancellation.ok) throw new CsrError(cancellation.code, cancellation.error);
     if (!hasPermission(actor.roles, "subscriptions:cancel")) throw new CsrError("FORBIDDEN", "You do not have permission for this action");
-    if (customer.status === "CANCELLED") throw new CsrError("CONFLICT", "This membership is already cancelled");
+    const cancellationReason = cancellation.reason;
     const plans = await planNames(customer.id);
     await prisma.$transaction([
       prisma.subscription.updateMany({ where: { vehicle: { userId: customer.id }, status: "ACTIVE" }, data: { status: "CANCELLED" } }),

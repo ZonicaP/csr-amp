@@ -3,12 +3,11 @@ import { describe, it } from "node:test";
 import { maxDiscountPercent, parseOfferDiscount } from "./discount.ts";
 
 describe("discount offers", () => {
-  it("caps agents and supervisors at 10 percent", () => {
+  it("caps an agent at 10 percent", () => {
     assert.equal(maxDiscountPercent(["AGENT"]), 10);
-    assert.equal(maxDiscountPercent(["SUPERVISOR"]), 10);
     assert.equal(maxDiscountPercent(["ADMIN"]), null);
     assert.deepEqual(parseOfferDiscount(10, "3-months", ["AGENT"]), { percent: 10, period: "3-months", label: "3 months" });
-    assert.deepEqual(parseOfferDiscount(11, "1-year", ["SUPERVISOR"]), { error: "This role can offer up to 10%" });
+    assert.deepEqual(parseOfferDiscount(11, "1-year", ["AGENT"]), { error: "This role can offer up to 10%" });
   });
 
   it("lets an admin offer more than 10 percent", () => {

@@ -31,7 +31,7 @@ export default async function TeamPage() {
     >
       <Box sx={{ width: "100%", maxWidth: 960, mx: "auto" }}>
         {canRead ? (
-          <TeamDirectory team={team} canManage={canManage} />
+          <TeamDirectory initialTeam={team} canManage={canManage} />
         ) : (
           <>
             <Typography component="h1" variant="h1">

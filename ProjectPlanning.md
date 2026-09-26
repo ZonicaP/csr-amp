@@ -43,13 +43,14 @@
 - The most likely bar was too much on every tab, so it stays on Info only, where the agent lands.
 - Plate documents are one email for the whole account. Repeating that action on every vehicle dialog cluttered the menu.
 - A membership can hold several vehicles. One active plan per vehicle, and adding a plan replaces the current one. The vehicle card opens its own details. Adding a vehicle is a separate action: a year list, then make and model suggestions. Those suggestions come from NHTSA, but only cars, trucks, and SUVs. The full manufacturer list was full of trailer companies and other names a CSR would never pick. A make that is not listed can still be typed.
-- Calls are part of the job, not a side note. Start and end sit in the header, top right on desktop. Ending a call asks the CSR to confirm they gave the reference and that the caller had nothing else, with one optional note. Call back uses that same note. Only an agent can escalate, and that becomes a callback assigned to a supervisor.
+- Calls are part of the job, not a side note. Start and end sit in the header, top right on desktop. Ending a call asks the CSR to confirm they gave the reference and that the caller had nothing else, with one optional note. Call back uses that same note. Only an agent can escalate, and that becomes a callback assigned to an admin.
 - Call search works the same way as customer search: type, and the list filters, including a callbacks-only view. A callback can be marked as called from the call itself.
 - Linking the caller should not interrupt the CSR, and it should not happen just because a customer page was open when the call ended. While a call is open, the customer page has one quiet row, This is the caller. Undo clears a wrong link. Opening another customer shows who is already linked and can switch with the same button. Membership changes are not blocked when no call is open. If a call is open and the caller was confirmed, the change stays on that call.
 - Home and profile are the same page. The AMP logo goes there.
 - Cancelling needs a confirmation that names the customer, plus a reason. The common reasons are a dropdown. Other asks for a note. A stray click should not cancel a membership.
 - Coupons, a single wash, and changing the card belong to the AMP app. Smart debug still has to answer those questions from what is actually on the account, and it has to see previous calls. It must not invent a coupon code or an expiry date. If a charge failed, the CSR action here is to email a payment link.
-- The portal is private. Customer pages should not be indexed. API routes require a signed-in CSR, and lookups that can be abused stay rate limited.
+- The portal is private. Customer pages should not be indexed. API routes require a signed-in CSR, and lookups that can be abused stay rate limited. The count is a row in Postgres, so a restart or a second server instance still shares the same window.
+- Supervisor was dropped so the roles stay narrow. An agent can do every customer action, including cancel, transfer, and overdue, and can offer up to 10%. An admin can do the same with no discount cap, and is the only role that can invite, change a role, or disable a CSR. A call escalation goes to an admin. Existing supervisor accounts become agents.
 
 ## Core expectations
 
@@ -57,3 +58,11 @@
 - Production-ready mentality: add automated unit or integration tests for the primary logic paths.
 - Documentation and setup: `README.md` must include exact install steps, environment dependencies, and architectural tradeoffs.
 - Commit history: use small, incremental, well-described commits rather than one finished-project upload.
+
+## Examples from the code
+
+1. React hook: `useDebouncedValue` waits 300ms after typing stops, then customer search and call search run. The list does not request on every keystroke.
+2. Reusable component: `StatusBadge` draws Active, Overdue, and Cancelled the same way on the customer page, the customer list, and a vehicle plan. A cancelled badge uses the shared cancelled color.
+3. Webhook: none. No outside system needs to call this portal when something happens. Card payments, coupons, and single washes stay in the AMP app. This app sends mail over SMTP when a CSR acts, and it reads the database itself. There is no payment provider or inbound event to receive.
+4. Abstract class: `Email` owns the shared layout and `render()`. `InviteEmail`, `PasswordResetEmail`, and the other messages only supply a subject and a body.
+5. Interface: `EmailTransport` is the `send` contract. `SmtpEmailTransport` is the implementation, so sending mail does not depend on Nodemailer directly.

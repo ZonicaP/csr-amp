@@ -1,5 +1,6 @@
 import { Prisma, type CustomerEventType } from "@prisma/client";
 import { callListWhere } from "@/lib/calls/call-search";
+import { closingCall } from "@/lib/calls/closing";
 import { randomCallReference } from "@/lib/calls/reference";
 import { currentCsr, CsrError } from "@/lib/csr/csr-service";
 import { canEscalateCall, hasPermission } from "@/lib/csr/permissions";
@@ -116,19 +117,17 @@ export async function unlinkCaller(actorId: string) {
 }
 
 export async function endCall(actorId: string, input: { gaveReference: boolean; confirmedNothingElse: boolean; notes?: string }) {
-  if (input.gaveReference !== true || input.confirmedNothingElse !== true) {
-    throw new CsrError("INVALID", "Confirm both closing steps before ending the call");
-  }
+  const closing = closingCall(input);
+  if (!closing.ok) throw new CsrError("INVALID", closing.error);
   const call = await openCallRow(actorId);
-  const notes = optionalNote(input.notes);
   const updated = await prisma.call.updateMany({
     where: { id: call.id, csrId: actorId, status: "OPEN" },
     data: {
-      status: "CLOSED",
+      status: closing.status,
       endedAt: new Date(),
-      gaveReference: true,
-      confirmedNothingElse: true,
-      closingNotes: notes,
+      gaveReference: closing.gaveReference,
+      confirmedNothingElse: closing.confirmedNothingElse,
+      closingNotes: closing.closingNotes,
     },
   });
   if (updated.count !== 1) throw new CsrError("CONFLICT", "That call is no longer open");
@@ -149,30 +148,30 @@ export async function requestCallback(actorId: string, note: string) {
   return { reference: call.reference };
 }
 
-export async function listEscalationSupervisors(actorId: string) {
+export async function listEscalationAdmins(actorId: string) {
   const actor = await currentCsr(actorId);
   if (!canEscalateCall(actor.roles)) throw new CsrError("FORBIDDEN", "Only an agent can escalate a call");
   return prisma.csr.findMany({
-    where: { status: "ACTIVE", roles: { some: { role: "SUPERVISOR" } } },
+    where: { status: "ACTIVE", roles: { some: { role: "ADMIN" } } },
     select: { id: true, displayName: true },
     orderBy: { displayName: "asc" },
   });
 }
 
-export async function escalateCall(actorId: string, supervisorId: string, note: string) {
+export async function escalateCall(actorId: string, adminId: string, note: string) {
   const actor = await currentCsr(actorId);
   if (!canEscalateCall(actor.roles)) throw new CsrError("FORBIDDEN", "Only an agent can escalate a call");
   const callbackNote = requiredNote(note, "Add a note before escalating the call");
   const call = await prisma.call.findFirst({ where: { csrId: actorId, status: "OPEN" }, select: { id: true, reference: true } });
   if (!call) throw new CsrError("NOT_FOUND", "There is no open call");
-  const supervisor = await prisma.csr.findFirst({
-    where: { id: supervisorId, status: "ACTIVE", roles: { some: { role: "SUPERVISOR" } } },
+  const admin = await prisma.csr.findFirst({
+    where: { id: adminId, status: "ACTIVE", roles: { some: { role: "ADMIN" } } },
     select: { id: true },
   });
-  if (!supervisor) {
-    const available = await prisma.csr.count({ where: { status: "ACTIVE", roles: { some: { role: "SUPERVISOR" } } } });
-    if (available === 0) throw new CsrError("CONFLICT", "No supervisor is available");
-    throw new CsrError("INVALID", "Choose an active supervisor");
+  if (!admin) {
+    const available = await prisma.csr.count({ where: { status: "ACTIVE", roles: { some: { role: "ADMIN" } } } });
+    if (available === 0) throw new CsrError("CONFLICT", "No admin is available");
+    throw new CsrError("INVALID", "Choose an active admin");
   }
   const endedAt = new Date();
   const updated = await prisma.call.updateMany({
@@ -181,7 +180,7 @@ export async function escalateCall(actorId: string, supervisorId: string, note: 
       status: "CALLBACK",
       endedAt,
       callbackNote,
-      csrId: supervisor.id,
+      csrId: admin.id,
       escalatedAt: endedAt,
       escalatedFromCsrId: actorId,
     },
@@ -352,11 +351,6 @@ async function openCallRow(actorId: string) {
   const call = await prisma.call.findFirst({ where: { csrId: actorId, status: "OPEN" }, select: { id: true, reference: true } });
   if (!call) throw new CsrError("NOT_FOUND", "There is no open call");
   return call;
-}
-
-function optionalNote(note: string | undefined) {
-  const trimmed = (note ?? "").trim().slice(0, noteLimit);
-  return trimmed.length > 0 ? trimmed : null;
 }
 
 function requiredNote(note: string, message: string) {

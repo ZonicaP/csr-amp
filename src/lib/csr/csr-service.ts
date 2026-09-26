@@ -2,6 +2,7 @@ import { CsrRoleName, CsrStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { createInviteToken, hashInviteToken, hashPassword, verifyPassword } from "@/lib/csr/password";
 import { hasPermission, type Permission } from "@/lib/csr/permissions";
+import { csrMatchesQuery } from "@/lib/csr/team-search";
 
 const roleSelect = { select: { role: true } } as const;
 
@@ -209,13 +210,13 @@ export async function currentCsr(actorId: string) {
   return toPublicCsr(csr);
 }
 
-export async function listCsrs(actorId: string) {
+export async function listCsrs(actorId: string, query = "") {
   await requireCsr(actorId, "csr:read");
   const csrs = await prisma.csr.findMany({
     select: csrIdentitySelect,
     orderBy: [{ surname: "asc" }, { name: "asc" }],
   });
-  return csrs.map(toPublicCsr);
+  return csrs.map(toPublicCsr).filter((csr) => csrMatchesQuery(csr, query));
 }
 
 export async function cancelInvite(actorId: string, csrId: string) {

@@ -3,37 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Button from "@mui/material/Button";
-import Dialog from "@mui/material/Dialog";
-import DialogContent from "@mui/material/DialogContent";
-import DialogTitle from "@mui/material/DialogTitle";
-import Stack from "@mui/material/Stack";
-import TextField from "@mui/material/TextField";
-import Typography from "@mui/material/Typography";
-import MenuItem from "@mui/material/MenuItem";
-import DialogCloseButton, { dialogFooterButton } from "@/components/DialogCloseButton";
+import CancelMembershipDialog from "@/components/users/CancelMembershipDialog";
+import OfferDiscountDialog from "@/components/users/OfferDiscountDialog";
 import { useCustomerNav } from "@/components/users/CustomerNavProvider";
 import type { SuggestedAction } from "@/lib/debug/account-issue";
-import { offerPeriods, type OfferPeriod } from "@/lib/users/discount";
-
-const compactButton = { "&&": { minHeight: 36, py: "6px", px: 2, fontSize: 14 } };
-
-const cancellationReasons = [
-  "Too expensive",
-  "No longer needs the membership",
-  "Switching to another provider",
-  "Vehicle sold or no longer owned",
-  "Service did not meet expectations",
-  "Other",
-] as const;
-
-const reasonLimit = 200;
-const otherPrefix = "Other: ";
-
-function cancellationSummary(reason: string, notes: string) {
-  if (reason !== "Other") return reason.trim();
-  const text = notes.trim();
-  return text ? `${otherPrefix}${text}`.slice(0, reasonLimit) : "";
-}
 
 const labels: Record<SuggestedAction["type"], string> = {
   "email-payment-link": "Email payment link",
@@ -71,29 +44,17 @@ export default function AccountAction({
   const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [cancelOpen, setCancelOpen] = useState(false);
   const [offerOpen, setOfferOpen] = useState(false);
-  const [reason, setReason] = useState("");
-  const [notes, setNotes] = useState("");
-  const [percent, setPercent] = useState("");
-  const [period, setPeriod] = useState<OfferPeriod>("3-months");
+  const [dialogKey, setDialogKey] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
-  const discount = Number(percent);
-  const discountReady = Number.isInteger(discount) && discount >= 1 && discount <= 100 && (maxDiscount == null || discount <= maxDiscount);
 
-  async function run(event?: React.MouseEvent) {
+  async function run(extra: Record<string, unknown> = {}) {
     onActivate?.();
-    event?.stopPropagation();
     setState("sending");
     setMessage(null);
     const response = await fetch(`/api/customers/${encodeURIComponent(membershipId)}/action`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(
-        action.type === "cancel-membership"
-          ? { ...action, reason: cancellationSummary(reason, notes) }
-          : action.type === "offer-discount"
-            ? { ...action, percent: Number(percent), period }
-            : action,
-      ),
+      body: JSON.stringify({ ...action, ...extra }),
     });
     if (!response.ok) {
       const body = (await response.json().catch(() => null)) as { error?: string } | null;
@@ -102,20 +63,17 @@ export default function AccountAction({
       return;
     }
     setState("sent");
-    if (action.type === "cancel-membership" || action.type === "offer-discount") {
+    if (action.type === "cancel-membership" || action.type === "offer-discount" || action.type === "reactivate-membership") {
       router.refresh();
-      return;
     }
-    if (action.type === "reactivate-membership") router.refresh();
   }
 
   function openCancel(event: React.MouseEvent) {
     onActivate?.();
     event.stopPropagation();
-    setReason("");
-    setNotes("");
     setMessage(null);
     setState("idle");
+    setDialogKey((value) => value + 1);
     setCancelOpen(true);
     onCover?.();
   }
@@ -123,10 +81,9 @@ export default function AccountAction({
   function openOffer(event: React.MouseEvent) {
     onActivate?.();
     event.stopPropagation();
-    setPercent("");
-    setPeriod("3-months");
     setMessage(null);
     setState("idle");
+    setDialogKey((value) => value + 1);
     setOfferOpen(true);
     onCover?.();
   }
@@ -148,163 +105,44 @@ export default function AccountAction({
 
   return (
     <>
-    <Button
-      variant={appearance === "button" ? "outlined" : "text"}
-      onClick={action.type === "cancel-membership" ? openCancel : action.type === "offer-discount" ? openOffer : run}
-      disabled={state === "sending" || (state === "sent" && action.type !== "cancel-membership")}
-      sx={
-        appearance === "button"
-          ? { "&&": { minHeight: 36, py: "6px", px: 2, fontSize: 14, color: textColor } }
-          : { "&&": { minHeight: 0, py: "2px", px: 1, fontSize: 14, fontWeight: 600, justifyContent: "flex-start", color: textColor } }
-      }
-    >
-      {label}
-    </Button>
-    {action.type === "cancel-membership" ? (
-      <Dialog
-        open={cancelOpen}
-        onClose={state === "sent" ? finish : reveal}
-        fullWidth
-        maxWidth="sm"
-        sx={{
-          "& .MuiDialog-container": { alignItems: { xs: "flex-end", md: "center" } },
-          "& .MuiDialog-paper": {
-            m: { xs: 0, md: 4 },
-            width: { xs: "100%", md: "calc(100% - 64px)" },
-            maxWidth: { xs: "100%", md: 480 },
-            borderRadius: { xs: "16px 16px 0 0", md: 2 },
-          },
-          "& .MuiDialogTitle-root + .MuiDialogContent-root": { pt: 2 },
-        }}
+      <Button
+        variant={appearance === "button" ? "outlined" : "text"}
+        onClick={action.type === "cancel-membership" ? openCancel : action.type === "offer-discount" ? openOffer : (event) => { event.stopPropagation(); void run(); }}
+        disabled={state === "sending" || (state === "sent" && action.type !== "cancel-membership")}
+        sx={
+          appearance === "button"
+            ? { "&&": { minHeight: 36, py: "6px", px: 2, fontSize: 14, color: textColor } }
+            : { "&&": { minHeight: 0, py: "2px", px: 1, fontSize: 14, fontWeight: 600, justifyContent: "flex-start", color: textColor } }
+        }
       >
-        <DialogTitle sx={{ color: "#003264", pb: 1 }}>{state === "sent" ? "Membership cancelled" : "Cancel membership"}</DialogTitle>
-        <DialogContent>
-          <Stack spacing={1.5} sx={{ pb: { xs: "max(16px, env(safe-area-inset-bottom))", md: 1 } }}>
-            {state === "sent" ? (
-              <Typography sx={{ color: "#181D27", fontSize: 14 }}>
-                Membership {membershipId} has been cancelled. A confirmation email was sent.
-              </Typography>
-            ) : (
-              <>
-                <Typography sx={{ color: "#181D27", fontSize: 14 }}>
-                  {customerName ? `${customerName}'s membership ${membershipId}` : `Membership ${membershipId}`} will be cancelled.
-                </Typography>
-                <TextField
-                  select
-                  label="Reason for cancellation"
-                  value={reason}
-                  onChange={(event) => setReason(event.target.value)}
-                  fullWidth
-                  autoFocus
-                >
-                  <MenuItem value="" sx={{ display: "none" }} />
-                  {cancellationReasons.map((item) => (
-                    <MenuItem key={item} value={item}>
-                      {item}
-                    </MenuItem>
-                  ))}
-                </TextField>
-                {reason === "Other" ? (
-                  <TextField
-                    label="Notes"
-                    value={notes}
-                    onChange={(event) => setNotes(event.target.value.slice(0, reasonLimit - otherPrefix.length))}
-                    multiline
-                    minRows={2}
-                    fullWidth
-                    required
-                    autoFocus
-                  />
-                ) : null}
-              </>
-            )}
-            {message ? <Typography sx={{ color: "#FA4362", fontSize: 14 }}>{message}</Typography> : null}
-            <Stack direction="row" spacing={1}>
-              {state === "sent" ? (
-                <DialogCloseButton short onClick={finish} />
-              ) : (
-                <>
-                  <Button variant="outlined" onClick={reveal} disabled={state === "sending"} sx={{ ...dialogFooterButton, ...compactButton }}>
-                    Keep membership
-                  </Button>
-                  <Button
-                    variant="contained"
-                    color="error"
-                    onClick={() => run()}
-                    disabled={state === "sending" || cancellationSummary(reason, notes).length === 0}
-                    sx={{ ...dialogFooterButton, ...compactButton }}
-                  >
-                    {state === "sending" ? "Cancelling" : "Cancel membership"}
-                  </Button>
-                </>
-              )}
-            </Stack>
-          </Stack>
-        </DialogContent>
-      </Dialog>
-    ) : null}
-    {action.type === "offer-discount" ? (
-      <Dialog
-        open={offerOpen}
-        onClose={state === "sent" ? finish : reveal}
-        fullWidth
-        maxWidth="sm"
-        sx={{
-          "& .MuiDialog-container": { alignItems: { xs: "flex-end", md: "center" } },
-          "& .MuiDialog-paper": {
-            m: { xs: 0, md: 4 },
-            width: { xs: "100%", md: "calc(100% - 64px)" },
-            maxWidth: { xs: "100%", md: 480 },
-            borderRadius: { xs: "16px 16px 0 0", md: 2 },
-          },
-          "& .MuiDialogTitle-root + .MuiDialogContent-root": { pt: 2 },
-        }}
-      >
-        <DialogTitle sx={{ color: "#003264", pb: 1 }}>{state === "sent" ? "Discount offered" : "Offer discounted membership"}</DialogTitle>
-        <DialogContent>
-          <Stack spacing={1.5} sx={{ pb: { xs: "max(16px, env(safe-area-inset-bottom))", md: 1 } }}>
-            {state === "sent" ? (
-              <Typography sx={{ color: "#181D27", fontSize: 14 }}>
-                {discount}% off for {offerPeriods.find((item) => item.value === period)?.label} was offered. The email was sent to you.
-              </Typography>
-            ) : (
-              <>
-                <TextField
-                  label="Discount %"
-                  value={percent}
-                  onChange={(event) => setPercent(event.target.value.replace(/\D/g, "").slice(0, 3))}
-                  helperText={maxDiscount == null ? undefined : `Up to ${maxDiscount}%`}
-                  fullWidth
-                  autoFocus
-                />
-                <TextField select label="Period" value={period} onChange={(event) => setPeriod(event.target.value as OfferPeriod)} fullWidth>
-                  {offerPeriods.map((item) => (
-                    <MenuItem key={item.value} value={item.value}>
-                      {item.label}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </>
-            )}
-            {message ? <Typography sx={{ color: "#FA4362", fontSize: 14 }}>{message}</Typography> : null}
-            <Stack direction="row" spacing={1}>
-              {state === "sent" ? (
-                <DialogCloseButton onClick={finish} />
-              ) : (
-                <>
-                  <Button variant="outlined" onClick={reveal} disabled={state === "sending"} sx={dialogFooterButton}>
-                    {onReveal ? "Back" : "Close"}
-                  </Button>
-                  <Button variant="contained" onClick={() => run()} disabled={state === "sending" || !discountReady} sx={dialogFooterButton}>
-                    {state === "sending" ? "Sending" : "Send offer"}
-                  </Button>
-                </>
-              )}
-            </Stack>
-          </Stack>
-        </DialogContent>
-      </Dialog>
-    ) : null}
+        {label}
+      </Button>
+      {action.type === "cancel-membership" ? (
+        <CancelMembershipDialog
+          key={dialogKey}
+          open={cancelOpen}
+          membershipId={membershipId}
+          customerName={customerName}
+          state={state}
+          message={message}
+          onClose={reveal}
+          onDone={finish}
+          onSubmit={(reason) => run({ reason })}
+        />
+      ) : null}
+      {action.type === "offer-discount" ? (
+        <OfferDiscountDialog
+          key={dialogKey}
+          open={offerOpen}
+          state={state}
+          message={message}
+          maxDiscount={maxDiscount ?? null}
+          closeLabel={onReveal ? "Back" : "Close"}
+          onClose={reveal}
+          onDone={finish}
+          onSubmit={(percent, period) => run({ percent, period })}
+        />
+      ) : null}
     </>
   );
 }

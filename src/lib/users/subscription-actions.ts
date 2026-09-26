@@ -4,6 +4,7 @@ import { currentCsr, CsrError } from "@/lib/csr/csr-service";
 import { hasPermission } from "@/lib/csr/permissions";
 import { SubscriptionChangeEmail } from "@/lib/email/subscription-change-email";
 import { appUrl, createEmailService } from "@/lib/email/email-service";
+import { transferPlan } from "@/lib/users/transfer";
 import { isWashPlan } from "@/lib/users/wash-plans";
 
 type VehicleRecord = {
@@ -110,8 +111,7 @@ export async function runSubscriptionChange(actorId: string, membershipId: strin
   }
 
   if (!hasPermission(actor.roles, "subscriptions:transfer")) throw new CsrError("FORBIDDEN", "You do not have permission for this action");
-  if (action.destinationVehicleId === subscription.vehicle.id) throw new CsrError("INVALID", "Choose a different vehicle");
-  const destination = await prisma.vehicle.findUnique({
+  const destination = action.destinationVehicleId === subscription.vehicle.id ? null : await prisma.vehicle.findUnique({
     where: { id: action.destinationVehicleId },
     select: {
       ...vehicleSelect,
@@ -119,10 +119,27 @@ export async function runSubscriptionChange(actorId: string, membershipId: strin
       subscriptions: { where: { status: "ACTIVE", planName: subscription.planName }, select: { id: true } },
     },
   });
+  const moved = transferPlan({
+    plan: {
+      status: subscription.status,
+      planName: subscription.planName,
+      vehicleId: subscription.vehicle.id,
+      vehicleLabel: vehicleLabel(subscription.vehicle),
+      membershipId: customer.membershipId,
+    },
+    destinationVehicleId: action.destinationVehicleId,
+    destination: destination
+      ? {
+          vehicleLabel: vehicleLabel(destination),
+          membershipId: destination.user.membershipId,
+          status: destination.user.status,
+          hasSamePlan: destination.subscriptions.length > 0,
+        }
+      : null,
+  });
+  if (!moved.ok) throw new CsrError(moved.code, moved.error);
   if (!destination) throw new CsrError("NOT_FOUND", "That vehicle could not be found");
-  if (destination.user.status === "CANCELLED") throw new CsrError("CONFLICT", "That membership is cancelled");
-  if (destination.subscriptions.length > 0) throw new CsrError("CONFLICT", "That vehicle already has this plan");
-  const summary = `${subscription.planName} moved from ${vehicleLabel(subscription.vehicle)} on ${customer.membershipId} to ${vehicleLabel(destination)} on ${destination.user.membershipId}.`.slice(0, 500);
+  const summary = moved.summary;
   const events = [customer.id, destination.user.id]
     .filter((userId, index, ids) => ids.indexOf(userId) === index)
     .map((userId) => prisma.customerEvent.create({ data: { userId, type: "ACCOUNT_UPDATED", summary, createdAt: new Date(), ...link } }));
