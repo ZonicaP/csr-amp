@@ -1,3 +1,4 @@
+import { openCallLink } from "@/lib/calls/call-service";
 import { prisma } from "@/lib/prisma";
 import { currentCsr, CsrError } from "@/lib/csr/csr-service";
 import { hasPermission } from "@/lib/csr/permissions";
@@ -9,17 +10,26 @@ import { parseOfferDiscount } from "@/lib/users/discount";
 async function customerFor(membershipId: string) {
   const customer = await prisma.user.findFirst({
     where: { membershipId: { equals: membershipId, mode: "insensitive" } },
-    select: {
-      id: true,
-      firstName: true,
-      membershipId: true,
-      status: true,
-      vehicles: { orderBy: { createdAt: "asc" }, select: { id: true, subscriptions: { select: { id: true, status: true, planName: true } } } },
-      purchases: { orderBy: { purchasedAt: "desc" }, select: { id: true, description: true, amount: true, failureReason: true, purchasedAt: true } },
-    },
+    select: { id: true, firstName: true, membershipId: true, status: true },
   });
   if (!customer) throw new CsrError("NOT_FOUND", "That customer could not be found");
   return customer;
+}
+
+async function planNames(userId: string) {
+  const vehicles = await prisma.vehicle.findMany({
+    where: { userId },
+    orderBy: { createdAt: "asc" },
+    select: { subscriptions: { select: { planName: true } } },
+  });
+  return vehicles.flatMap((vehicle) => vehicle.subscriptions.map((plan) => plan.planName));
+}
+
+async function paidPurchases(userId: string) {
+  return prisma.purchase.findMany({
+    where: { userId, failureReason: null },
+    select: { id: true, description: true, amount: true, purchasedAt: true },
+  });
 }
 
 export async function runAccountAction(
@@ -29,6 +39,7 @@ export async function runAccountAction(
   input: { reason?: string; percent?: unknown; period?: unknown } = {},
 ) {
   const actor = await currentCsr(actorId);
+  const link = await openCallLink(actorId);
   const customer = await customerFor(membershipId);
   const mail = createEmailService();
   const to = actor.email;
@@ -38,14 +49,14 @@ export async function runAccountAction(
     if (!cancellationReason) throw new CsrError("INVALID", "Add a reason for the cancellation");
     if (!hasPermission(actor.roles, "subscriptions:cancel")) throw new CsrError("FORBIDDEN", "You do not have permission for this action");
     if (customer.status === "CANCELLED") throw new CsrError("CONFLICT", "This membership is already cancelled");
-    const plans = customer.vehicles.flatMap((vehicle) => vehicle.subscriptions.map((plan) => plan.planName));
+    const plans = await planNames(customer.id);
     await prisma.$transaction([
       prisma.subscription.updateMany({ where: { vehicle: { userId: customer.id }, status: "ACTIVE" }, data: { status: "CANCELLED" } }),
       prisma.user.update({ where: { id: customer.id }, data: { status: "CANCELLED" } }),
       prisma.customerEvent.create({
-        data: { userId: customer.id, type: "PLAN_CANCELLED", summary: `Membership cancelled by CSR. ${cancellationReason}`, createdAt: new Date() },
+        data: { userId: customer.id, type: "PLAN_CANCELLED", summary: `Membership cancelled by CSR. ${cancellationReason}`, createdAt: new Date(), ...link },
       }),
-      prisma.customerEvent.create({ data: { userId: customer.id, type: "ACCOUNT_CANCELLED", summary: "Account cancelled by CSR.", createdAt: new Date(Date.now() + 1000) } }),
+      prisma.customerEvent.create({ data: { userId: customer.id, type: "ACCOUNT_CANCELLED", summary: "Account cancelled by CSR.", createdAt: new Date(Date.now() + 1000), ...link } }),
     ]);
     await mail.send(
       to,
@@ -71,7 +82,7 @@ export async function runAccountAction(
     await prisma.$transaction([
       prisma.subscription.updateMany({ where: { vehicle: { userId: customer.id } }, data: { status: "ACTIVE" } }),
       prisma.user.update({ where: { id: customer.id }, data: { status: "ACTIVE" } }),
-      prisma.customerEvent.create({ data: { userId: customer.id, type: "PLAN_STARTED", summary: "Membership reactivated by CSR.", createdAt: new Date() } }),
+      prisma.customerEvent.create({ data: { userId: customer.id, type: "PLAN_STARTED", summary: "Membership reactivated by CSR.", createdAt: new Date(), ...link } }),
     ]);
     return;
   }
@@ -100,6 +111,7 @@ export async function runAccountAction(
         type: "ACCOUNT_UPDATED",
         summary: `Discount offered: ${offer.percent}% off for ${offer.label}.`.slice(0, 500),
         createdAt: new Date(),
+        ...link,
       },
     });
     return;
@@ -107,6 +119,9 @@ export async function runAccountAction(
 
   if (action.type === "email-plate-documents") {
     if (!hasPermission(actor.roles, "customers:update")) throw new CsrError("FORBIDDEN", "You do not have permission for this action");
+    await prisma.customerEvent.create({
+      data: { userId: customer.id, type: "ACCOUNT_UPDATED", summary: "Plate documents requested.", createdAt: new Date(), ...link },
+    });
     const documentSubject = `Plate update ${customer.membershipId}`;
     await mail.send(
       to,
@@ -126,7 +141,7 @@ export async function runAccountAction(
 
   if (action.type === "refund-charge") {
     if (!hasPermission(actor.roles, "billing:resolve-overdue")) throw new CsrError("FORBIDDEN", "You do not have permission for this action");
-    const paid = customer.purchases.filter((purchase) => !purchase.failureReason);
+    const paid = await paidPurchases(customer.id);
     const charge = paid.find((purchase) => purchase.id === action.purchaseId);
     const earlier = charge
       ? paid.find(
@@ -138,6 +153,15 @@ export async function runAccountAction(
         )
       : null;
     if (!charge || !earlier) throw new CsrError("CONFLICT", "A refund is only available on a second charge made within two days");
+    await prisma.customerEvent.create({
+      data: {
+        userId: customer.id,
+        type: "ACCOUNT_UPDATED",
+        summary: `Refund requested for ${charge.description} ($${Number(charge.amount).toFixed(2)}).`.slice(0, 500),
+        createdAt: new Date(),
+        ...link,
+      },
+    });
     await mail.send(
       to,
       new NoticeEmail(

@@ -26,7 +26,7 @@ export default function Sidebar({ name, showTeam }: { name: string; showTeam: bo
     >
       <BrandLink width={120} />
       <SidebarNav showTeam={showTeam} />
-      <Box sx={{ mt: "auto", pt: 3, display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1.5 }}>
+      <Box sx={{ mt: "auto", pt: 3, display: "flex", flexDirection: "column", alignItems: "stretch", gap: 1.5 }}>
         <Link href="/profile" aria-label={`Account, ${name}`} style={{ color: "#717680", fontSize: 14, fontWeight: 500, textDecoration: "none" }}>
           {name}
         </Link>

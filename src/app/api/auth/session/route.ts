@@ -2,9 +2,10 @@ import { NextResponse } from "next/server";
 import { currentCsr, loginCsr } from "@/lib/csr/csr-service";
 import { csrErrorResponse } from "@/lib/csr/http";
 import { authBlocked, clearAuthAttempts, recordAuthFailure } from "@/lib/csr/auth-limit";
+import { withApi } from "@/lib/http/with-api";
 import { clearSessionCookie, readSession, setSessionCookie } from "@/lib/csr/session";
 
-export async function GET() {
+export const GET = withApi(async function GET() {
   try {
     const session = await readSession();
     if (!session) {
@@ -15,9 +16,9 @@ export async function GET() {
   } catch (error) {
     return csrErrorResponse(error);
   }
-}
+}, { auth: "required", limit: "standard" });
 
-export async function POST(request: Request) {
+export const POST = withApi(async function POST(request: Request) {
   try {
     const body = (await request.json()) as Record<string, unknown>;
     if (typeof body.email !== "string" || typeof body.password !== "string") {
@@ -41,9 +42,9 @@ export async function POST(request: Request) {
   } catch (error) {
     return csrErrorResponse(error);
   }
-}
+}, { auth: "public", limit: "auth" });
 
-export async function DELETE() {
+export const DELETE = withApi(async function DELETE() {
   await clearSessionCookie();
   return NextResponse.json({ ok: true });
-}
+}, { auth: "public", limit: "standard" });

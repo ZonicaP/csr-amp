@@ -34,7 +34,7 @@ export default async function LoginPage() {
   const session = await readSession();
   if (session) {
     const csr = await currentCsr(session.csrId);
-    redirect(csr.emailVerified ? "/" : "/verify-email");
+    redirect(csr.emailVerified ? "/profile" : "/verify-email");
   }
 
   return (

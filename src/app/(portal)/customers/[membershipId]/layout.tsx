@@ -3,6 +3,7 @@ import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import CustomerChrome from "@/components/users/CustomerChrome";
 import { accountIssue, accountSnapshot, duplicateCharge, type SuggestedAction } from "@/lib/debug/account-issue";
+import { hasPermission } from "@/lib/csr/permissions";
 import { maxDiscountPercent } from "@/lib/users/discount";
 import { loadCustomerPage } from "@/lib/users/load-customer-page";
 
@@ -40,6 +41,7 @@ export default async function CustomerLayout({ children, params }: { children: R
       name={`${customer.firstName} ${customer.lastName}`}
       actions={actions}
       maxDiscount={maxDiscountPercent(csr.roles)}
+      canAddVehicle={hasPermission(csr.roles, "customers:update")}
       account={snapshot}
       issue={accountIssue(snapshot)}
     >

@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { verifyEmail } from "@/lib/csr/csr-service";
 import { csrErrorResponse } from "@/lib/csr/http";
+import { withApi } from "@/lib/http/with-api";
 
-export async function POST(request: Request) {
+export const POST = withApi(async function POST(request: Request) {
   try {
     const body = (await request.json()) as Record<string, unknown>;
     if (typeof body.token !== "string") {
@@ -13,4 +14,4 @@ export async function POST(request: Request) {
   } catch (error) {
     return csrErrorResponse(error);
   }
-}
+}, { auth: "public", limit: "auth" });

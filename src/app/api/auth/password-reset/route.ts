@@ -5,8 +5,9 @@ import { PasswordResetEmail } from "@/lib/email/password-reset-email";
 import { EmailDeliveryError } from "@/lib/email/smtp-transport";
 import { authBlocked, recordAuthFailure } from "@/lib/csr/auth-limit";
 import { appUrl, createEmailService } from "@/lib/email/email-service";
+import { withApi } from "@/lib/http/with-api";
 
-export async function POST(request: Request) {
+export const POST = withApi(async function POST(request: Request) {
   try {
     const body = (await request.json()) as Record<string, unknown>;
     if (typeof body.email !== "string") {
@@ -25,9 +26,7 @@ export async function POST(request: Request) {
         await createEmailService().send(email, new PasswordResetEmail(appUrl(), result.name, result.token));
       } catch (error) {
         await clearPasswordReset(email);
-        if (error instanceof EmailDeliveryError) {
-          return NextResponse.json({ error: error.message }, { status: 502 });
-        }
+        if (error instanceof EmailDeliveryError) return csrErrorResponse(error);
         throw error;
       }
     }
@@ -35,9 +34,9 @@ export async function POST(request: Request) {
   } catch (error) {
     return csrErrorResponse(error);
   }
-}
+}, { auth: "public", limit: "auth" });
 
-export async function PUT(request: Request) {
+export const PUT = withApi(async function PUT(request: Request) {
   try {
     const body = (await request.json()) as Record<string, unknown>;
     if (typeof body.token !== "string" || typeof body.password !== "string") {
@@ -48,4 +47,4 @@ export async function PUT(request: Request) {
   } catch (error) {
     return csrErrorResponse(error);
   }
-}
+}, { auth: "public", limit: "auth" });

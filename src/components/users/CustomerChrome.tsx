@@ -7,6 +7,7 @@ import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import AccountMenu from "@/components/users/AccountMenu";
+import AddVehicle from "@/components/users/AddVehicle";
 import LikelyIssue from "@/components/users/LikelyIssue";
 import SmartDebug from "@/components/users/SmartDebug";
 import type { AccountIssue, AccountSnapshot, SuggestedAction } from "@/lib/debug/account-issue";
@@ -34,6 +35,7 @@ export default function CustomerChrome({
   maxDiscount,
   account,
   issue,
+  canAddVehicle = false,
   children,
 }: {
   membershipId: string;
@@ -42,6 +44,7 @@ export default function CustomerChrome({
   maxDiscount: number | null;
   account: AccountSnapshot;
   issue: AccountIssue;
+  canAddVehicle?: boolean;
   children: ReactNode;
 }) {
   const pathname = usePathname();
@@ -70,7 +73,7 @@ export default function CustomerChrome({
     >
       <PublishCustomerNav name={name} membershipId={membershipId} account={account} issue={issue} maxDiscount={maxDiscount} />
       <Stack spacing={2} sx={{ width: "100%", maxWidth: 720, mx: "auto" }}>
-        <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1, alignItems: "flex-start" }}>
+        <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1, alignItems: "center" }}>
           <Typography
             component="h1"
             sx={{
@@ -87,11 +90,12 @@ export default function CustomerChrome({
           <Box sx={{ flexShrink: 0, display: { xs: "none", md: "block" } }}>
             <AccountMenu membershipId={membershipId} actions={actions} maxDiscount={maxDiscount} />
           </Box>
-          <Box sx={{ display: { md: "none" } }}>
+          <Box sx={{ display: { xs: "flex", md: "none" }, flexShrink: 0, gap: 1, alignItems: "center" }}>
+            {canAddVehicle && pathname.startsWith(`${base}/vehicles`) ? <AddVehicle membershipId={membershipId} /> : null}
             <AccountMenu membershipId={membershipId} actions={actions} maxDiscount={maxDiscount} />
           </Box>
         </Stack>
-        <LikelyIssue membershipId={membershipId} issue={issue} maxDiscount={maxDiscount} />
+        {pathname === base ? <LikelyIssue membershipId={membershipId} issue={issue} maxDiscount={maxDiscount} /> : null}
         <Box
           component="nav"
           aria-label="Customer"

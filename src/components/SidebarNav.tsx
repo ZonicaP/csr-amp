@@ -37,7 +37,7 @@ export default function SidebarNav({ showTeam }: { showTeam: boolean }) {
   return (
     <Box component="nav" aria-label="Pages" sx={{ display: "flex", flexDirection: "column", gap: 0.5, mt: 3 }}>
       {[...appNav, ...(showTeam ? [{ href: "/team", label: "Team" }] : [])].map((item) => {
-        const active = pathname === item.href;
+        const active = item.href === "/calls" ? pathname.startsWith("/calls") : pathname === item.href;
         const inCustomers = item.href === "/customers" && customer !== null;
         return (
           <Box

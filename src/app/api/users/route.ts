@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { listUsers } from "@/lib/users/user-service";
 import { csrErrorResponse } from "@/lib/csr/http";
+import { withApi } from "@/lib/http/with-api";
 import { readSession } from "@/lib/csr/session";
 
-export async function GET(request: Request) {
+export const GET = withApi(async function GET(request: Request) {
   try {
     const session = await readSession();
     if (!session) {
@@ -17,4 +18,4 @@ export async function GET(request: Request) {
   } catch (error) {
     return csrErrorResponse(error);
   }
-}
+}, { auth: "required", limit: "standard" });
