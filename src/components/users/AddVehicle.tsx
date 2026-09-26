@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Autocomplete from "@mui/material/Autocomplete";
 import Button from "@mui/material/Button";
 import Dialog from "@mui/material/Dialog";
 import DialogContent from "@mui/material/DialogContent";
@@ -11,9 +12,28 @@ import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import DialogCloseButton, { dialogFooterButton } from "@/components/DialogCloseButton";
+import { matchVehicleNames } from "@/lib/vehicles/names";
 import { vehicleYears } from "@/lib/users/vehicle-year";
 
 const shortButton = { "&&": { minHeight: 36, py: "6px", px: 2, fontSize: 14 } };
+const addButton = {
+  "&&": { minHeight: 36, py: "6px", px: 2, fontSize: 14, color: "#003264", borderColor: "#E5E7EB", backgroundColor: "#FDFDFD" },
+};
+const catalogCache = new Map<string, string[]>();
+
+function catalog(path: string) {
+  const saved = catalogCache.get(path);
+  if (saved) return Promise.resolve(saved);
+  return fetch(path)
+    .then(async (response) => {
+      if (!response.ok) return [];
+      const body = (await response.json()) as { options?: string[] };
+      const options = body.options ?? [];
+      catalogCache.set(path, options);
+      return options;
+    })
+    .catch(() => []);
+}
 
 export default function AddVehicle({ membershipId }: { membershipId: string }) {
   const router = useRouter();
@@ -22,8 +42,29 @@ export default function AddVehicle({ membershipId }: { membershipId: string }) {
   const [make, setMake] = useState("");
   const [model, setModel] = useState("");
   const [plate, setPlate] = useState("");
+  const [makeOptions, setMakeOptions] = useState<string[]>([]);
+  const [modelList, setModelList] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const query = make.trim();
+    if (query.length < 2) return;
+    const handle = window.setTimeout(() => {
+      void catalog(`/api/vehicles/catalog?type=makes&scope=passenger&q=${encodeURIComponent(query)}`).then(setMakeOptions);
+    }, 250);
+    return () => window.clearTimeout(handle);
+  }, [make]);
+
+  useEffect(() => {
+    const chosen = make.trim();
+    if (chosen.length < 2) return;
+    const path = `/api/vehicles/catalog?type=models&make=${encodeURIComponent(chosen)}&year=${encodeURIComponent(year)}`;
+    const handle = window.setTimeout(() => {
+      void catalog(path).then(setModelList);
+    }, 250);
+    return () => window.clearTimeout(handle);
+  }, [make, year]);
 
   function close() {
     if (busy) return;
@@ -56,7 +97,7 @@ export default function AddVehicle({ membershipId }: { membershipId: string }) {
 
   return (
     <>
-      <Button variant="contained" onClick={() => setOpen(true)} sx={{ ...shortButton, alignSelf: "flex-end" }}>
+      <Button variant="outlined" onClick={() => setOpen(true)} sx={{ ...addButton, alignSelf: "flex-end" }}>
         Add vehicle
       </Button>
       <Dialog
@@ -85,8 +126,22 @@ export default function AddVehicle({ membershipId }: { membershipId: string }) {
                 </MenuItem>
               ))}
             </TextField>
-            <TextField label="Make" value={make} onChange={(event) => setMake(event.target.value.slice(0, 40))} fullWidth />
-            <TextField label="Model" value={model} onChange={(event) => setModel(event.target.value.slice(0, 40))} fullWidth />
+            <Autocomplete
+              freeSolo
+              options={makeOptions}
+              inputValue={make}
+              onInputChange={(_event, value) => setMake(value.slice(0, 40))}
+              filterOptions={(options) => options}
+              renderInput={(params) => <TextField {...params} label="Make" />}
+            />
+            <Autocomplete
+              freeSolo
+              options={matchVehicleNames(modelList, model)}
+              inputValue={model}
+              onInputChange={(_event, value) => setModel(value.slice(0, 40))}
+              filterOptions={(options) => options}
+              renderInput={(params) => <TextField {...params} label="Model" />}
+            />
             <TextField label="Plate" value={plate} onChange={(event) => setPlate(event.target.value.toUpperCase().slice(0, 8))} fullWidth />
             {message ? <Typography sx={{ color: "#FA4362", fontSize: 14 }}>{message}</Typography> : null}
             <Stack direction="row" spacing={1}>

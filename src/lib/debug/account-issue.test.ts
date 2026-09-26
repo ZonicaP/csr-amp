@@ -225,4 +225,82 @@ describe("smart debug answers", () => {
     assert.match(current.summary, /does not edit the card number/);
     assert.match(current.steps.join(" "), /No failed charge/);
   });
+
+  it("quotes the linked call, agent, and note without inventing another reference", () => {
+    const account = accountSnapshot(
+      {
+        firstName: "Liam",
+        lastName: "Brooks",
+        membershipId: "AMP-10021",
+        status: "ACTIVE",
+        createdAt: opened,
+        vehicles: [],
+        purchases: [],
+        events: [{ summary: "Membership reactivated by CSR.", createdAt: opened, call: { reference: "C-74779" } }],
+      },
+      [
+        {
+          reference: "C-74779",
+          status: "CLOSED",
+          startedAt: new Date(Date.UTC(2026, 8, 25, 21, 28)),
+          endedAt: new Date(Date.UTC(2026, 8, 25, 21, 30)),
+          closingNotes: "Caller confirmed the reactivation.",
+          callbackNote: null,
+          escalatedAt: null,
+          csr: { displayName: "Zonica Pietersen" },
+        },
+        {
+          reference: "C-90785",
+          status: "CALLBACK",
+          startedAt: new Date(Date.UTC(2026, 8, 20, 15)),
+          endedAt: null,
+          closingNotes: null,
+          callbackNote: "Ask about the membership fee.",
+          escalatedAt: new Date(Date.UTC(2026, 8, 20, 15, 5)),
+          csr: { displayName: "Zonica Pietersen" },
+        },
+      ],
+    );
+    assert.equal(account.logs[0]?.call, "C-74779");
+    assert.equal(account.calls[1]?.status, "Callback");
+    assert.equal(account.calls[1]?.escalated, true);
+    assert.equal(account.calls[1]?.callbackNote, "Ask about the membership fee.");
+
+    const answer = fallbackDebugAnswer(account, "previous calls");
+    const text = `${answer.likelyIssue} ${answer.summary} ${answer.steps.join(" ")}`;
+    assert.match(text, /C-74779/);
+    assert.match(text, /Zonica Pietersen/);
+    assert.match(text, /Caller confirmed the reactivation/);
+    assert.match(text, /C-90785/);
+    assert.doesNotMatch(text, /C-11111/);
+
+    const callback = fallbackDebugAnswer(account, "is there a callback");
+    assert.match(callback.likelyIssue, /C-90785/);
+    assert.match(callback.summary, /Ask about the membership fee/);
+    assert.match(callback.summary, /escalated/i);
+
+    const missing = fallbackDebugAnswer(account, "what about C-11111");
+    assert.match(missing.likelyIssue, /not linked/);
+    assert.doesNotMatch(missing.summary, /note:/i);
+
+    const none = fallbackDebugAnswer(customer("ACTIVE"), "previous calls");
+    assert.match(none.likelyIssue, /No call is linked/);
+    assert.match(`${none.summary} ${none.steps.join(" ")}`, /no reference/i);
+    assert.match(none.steps.join(" "), /Do not invent/);
+  });
+
+  it("explains a new vehicle and one active plan", () => {
+    const added = fallbackDebugAnswer(customer("ACTIVE"), "add a vehicle");
+    const addedText = `${added.summary} ${added.steps.join(" ")}`;
+    assert.doesNotMatch(addedText, /open call/i);
+    assert.match(addedText, /plate/i);
+    assert.match(addedText, /add a plan/i);
+
+    const plan = fallbackDebugAnswer(customer("ACTIVE"), "plan looks wrong");
+    const planText = `${plan.likelyIssue} ${plan.summary} ${plan.steps.join(" ")}`;
+    assert.match(planText, /One active plan per vehicle/);
+    assert.match(planText, /Basic Wash \(ACTIVE\)/);
+    assert.match(planText, /replaces the active plan/i);
+    assert.match(planText, /CANCELLED/);
+  });
 });

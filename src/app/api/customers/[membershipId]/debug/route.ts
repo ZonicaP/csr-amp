@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { csrErrorResponse } from "@/lib/csr/http";
 import { withApi } from "@/lib/http/with-api";
 import { readSession } from "@/lib/csr/session";
+import { callContextForCustomer } from "@/lib/calls/call-service";
 import { accountSnapshot } from "@/lib/debug/account-issue";
 import { csrQuestionAllowed, takeDebugTurn } from "@/lib/debug/debug-policy";
 import { debugAccount } from "@/lib/debug/groq-debug";
@@ -34,7 +35,8 @@ export const POST = withApi(async function POST(request: Request, { params }: { 
     if (!customer) {
       return NextResponse.json({ error: "That customer could not be found" }, { status: 404 });
     }
-    const answer = await debugAccount(accountSnapshot(customer), question);
+    const calls = await callContextForCustomer(session.csrId, customer.membershipId);
+    const answer = await debugAccount(accountSnapshot(customer, calls), question);
     return NextResponse.json(answer);
   } catch (error) {
     return csrErrorResponse(error);
