@@ -35,6 +35,21 @@
 - The plate email lists the photo, the registration, and proof of ownership as bullets, and asks for them by email with the subject `Plate update` plus the membership id. It does not link back into the portal.
 - Smart debug refuses questions that are not about this membership, including attempts to override its instructions. Each CSR can send 8 questions every 10 minutes. That count lives in the running server, so a restart starts a fresh window.
 - Sign out moved off the navbar and the sidebar onto `/profile`. The signed-in name opens that page.
+- Next.js already renders on the server, so Vite was not added. Material UI was chosen over Tailwind so the AMP theme could live in one place. Package scripts stay limited to the ones needed to build and launch.
+- I write the commits myself. The principle is pull requests and a staging environment, but this project deploys on a push to main.
+- Mobile comes first. The splash uses the AMP logo. Primary controls stay easy to hit with a thumb. Dialogs sit on the bottom of a phone and in the center on desktop. Footer buttons are full width and short, so two actions share the row without becoming tall.
+- The thing a CSR needs on a vehicle is the plan, not a generic Active badge. Basic Wash, Unlimited Wash, and The Works each have their own color. A cancelled plan uses a cancelled color. A strikethrough was considered and dropped because it was harder to read.
+- Opening a customer replaces the phone tabs with Info, Vehicles, Payments, and Logs. Smart debug sits in the center of that bar, and on desktop it is a sidebar item under the customer’s name. Home and Customers stay in the sidebar. The phone tab bar does not show on desktop.
+- The most likely bar was too much on every tab, so it stays on Info only, where the agent lands.
+- Plate documents are one email for the whole account. Repeating that action on every vehicle dialog cluttered the menu.
+- A membership can hold several vehicles. One active plan per vehicle, and adding a plan replaces the current one. The vehicle card opens its own details. Adding a vehicle is a separate action: a year list, then make and model suggestions. Those suggestions come from NHTSA, but only cars, trucks, and SUVs. The full manufacturer list was full of trailer companies and other names a CSR would never pick. A make that is not listed can still be typed.
+- Calls are part of the job, not a side note. Start and end sit in the header, top right on desktop. Ending a call asks the CSR to confirm they gave the reference and that the caller had nothing else, with one optional note. Call back uses that same note. Only an agent can escalate, and that becomes a callback assigned to a supervisor.
+- Call search works the same way as customer search: type, and the list filters, including a callbacks-only view. A callback can be marked as called from the call itself.
+- Linking the caller should not interrupt the CSR, and it should not happen just because a customer page was open when the call ended. While a call is open, the customer page has one quiet row, This is the caller. Undo clears a wrong link. Opening another customer shows who is already linked and can switch with the same button. Membership changes are not blocked when no call is open. If a call is open and the caller was confirmed, the change stays on that call.
+- Home and profile are the same page. The AMP logo goes there.
+- Cancelling needs a confirmation that names the customer, plus a reason. The common reasons are a dropdown. Other asks for a note. A stray click should not cancel a membership.
+- Coupons, a single wash, and changing the card belong to the AMP app. Smart debug still has to answer those questions from what is actually on the account, and it has to see previous calls. It must not invent a coupon code or an expiry date. If a charge failed, the CSR action here is to email a payment link.
+- The portal is private. Customer pages should not be indexed. API routes require a signed-in CSR, and lookups that can be abused stay rate limited.
 
 ## Core expectations
 
