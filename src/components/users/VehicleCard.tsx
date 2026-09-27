@@ -1,13 +1,19 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import dynamic from "next/dynamic";
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { cancelledBadgeSx } from "@/components/StatusBadge";
-import VehicleDialog from "@/components/users/VehicleDialog";
+
+const VehicleDialog = dynamic(() => import("@/components/users/VehicleDialog"));
+
+function preloadVehicleDialog() {
+  void import("@/components/users/VehicleDialog");
+}
 
 type VehicleDialogTab = "details" | "plan" | "payments";
 
@@ -66,6 +72,8 @@ export default function VehicleCard({ name, plate, since, plans, payment, paymen
         role="button"
         tabIndex={0}
         aria-label={[name, plate, outstanding ? "payment outstanding" : null].filter(Boolean).join(", ")}
+        onMouseEnter={preloadVehicleDialog}
+        onFocus={preloadVehicleDialog}
         onClick={() => {
           setTab("details");
           setOpen(true);
@@ -125,8 +133,8 @@ export default function VehicleCard({ name, plate, since, plans, payment, paymen
           </Box>
         </Stack>
       </Paper>
-      <VehicleDialog
-        open={open}
+      {open ? <VehicleDialog
+        open
         tab={tab}
         onTab={setTab}
         onClose={() => {
@@ -142,7 +150,7 @@ export default function VehicleCard({ name, plate, since, plans, payment, paymen
         payments={payments}
         planEditor={planEditor}
         plateEditor={plateEditor}
-      />
+      /> : null}
     </>
   );
 }

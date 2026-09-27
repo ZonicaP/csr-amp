@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
@@ -8,7 +9,12 @@ import Button from "@mui/material/Button";
 import Snackbar from "@mui/material/Snackbar";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import CallDialog from "@/components/calls/CallDialog";
+
+const CallDialog = dynamic(() => import("@/components/calls/CallDialog"));
+
+function preloadCallDialog() {
+  void import("@/components/calls/CallDialog");
+}
 import { AuthRequestError, postJson } from "@/lib/auth/http-client";
 import type { OpenCall } from "@/lib/calls/call-service";
 import { clearCallStarting, markCallStarting, writeStartedCall } from "@/lib/calls/transfer-notice";
@@ -58,6 +64,8 @@ export default function CallControls({
         {call ? (
           <Button
             variant="contained"
+            onMouseEnter={preloadCallDialog}
+            onFocus={preloadCallDialog}
             onClick={() => setInfoOpen(true)}
             sx={{ ...compactButton, "&&": { ...compactButton["&&"], backgroundColor: "#0B75E1", color: "#FFFFFF", "&:hover": { backgroundColor: "#0968C7" } } }}
           >
@@ -90,8 +98,8 @@ export default function CallControls({
           {error}
         </Alert>
       </Snackbar>
-      {call ? (
-        <CallDialog open={infoOpen} reference={call.reference} onClose={() => setInfoOpen(false)} />
+      {infoOpen && call ? (
+        <CallDialog open reference={call.reference} onClose={() => setInfoOpen(false)} />
       ) : null}
     </Box>
   );

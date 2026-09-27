@@ -1,11 +1,21 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import Button from "@mui/material/Button";
 import { useCallEditGuard } from "@/components/calls/CallEditGuard";
-import CancelMembershipDialog from "@/components/users/CancelMembershipDialog";
-import OfferDiscountDialog from "@/components/users/OfferDiscountDialog";
+
+const CancelMembershipDialog = dynamic(() => import("@/components/users/CancelMembershipDialog"));
+const OfferDiscountDialog = dynamic(() => import("@/components/users/OfferDiscountDialog"));
+
+function preloadCancelDialog() {
+  void import("@/components/users/CancelMembershipDialog");
+}
+
+function preloadOfferDialog() {
+  void import("@/components/users/OfferDiscountDialog");
+}
 import { useCustomerNav } from "@/components/users/CustomerNavProvider";
 import type { SuggestedAction } from "@/lib/debug/account-issue";
 
@@ -116,6 +126,8 @@ export default function AccountAction({
     <>
       <Button
         variant={appearance === "button" ? "outlined" : "text"}
+        onMouseEnter={action.type === "cancel-membership" ? preloadCancelDialog : action.type === "offer-discount" ? preloadOfferDialog : undefined}
+        onFocus={action.type === "cancel-membership" ? preloadCancelDialog : action.type === "offer-discount" ? preloadOfferDialog : undefined}
         onClick={action.type === "cancel-membership" ? openCancel : action.type === "offer-discount" ? openOffer : (event) => { event.stopPropagation(); onActivate?.(); guardEdit(() => { void run(); }); }}
         disabled={state === "sending" || (state === "sent" && action.type !== "cancel-membership")}
         sx={
@@ -126,10 +138,10 @@ export default function AccountAction({
       >
         {label}
       </Button>
-      {action.type === "cancel-membership" ? (
+      {action.type === "cancel-membership" && cancelOpen ? (
         <CancelMembershipDialog
           key={dialogKey}
-          open={cancelOpen}
+          open
           membershipId={membershipId}
           customerName={customerName}
           state={state}
@@ -139,10 +151,10 @@ export default function AccountAction({
           onSubmit={(reason) => run({ reason })}
         />
       ) : null}
-      {action.type === "offer-discount" ? (
+      {action.type === "offer-discount" && offerOpen ? (
         <OfferDiscountDialog
           key={dialogKey}
-          open={offerOpen}
+          open
           state={state}
           message={message}
           maxDiscount={maxDiscount ?? null}

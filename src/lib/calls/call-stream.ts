@@ -49,9 +49,27 @@ export function cookieValue(header: string | null | undefined, name: string): st
   return null;
 }
 
+function hostName(host: string): string {
+  return host.replace(/:\d+$/, "").replace(/^\[|\]$/g, "").toLowerCase();
+}
+
+function internalHost(host: string): boolean {
+  const name = hostName(host);
+  return name === "localhost" || name === "127.0.0.1" || name === "::1" || !name.includes(".");
+}
+
 export function requestOrigin(headers: { get(name: string): string | null }, url: string): string | null {
+  let urlOrigin: URL | null = null;
+  try {
+    urlOrigin = new URL(url);
+  } catch {
+    urlOrigin = null;
+  }
+  // A public URL is the app. A caller-supplied forwarded host must not replace it.
+  if (urlOrigin && !internalHost(urlOrigin.host)) return urlOrigin.origin;
+
   const host = firstHeader(headers.get("x-forwarded-host")) ?? headers.get("host");
-  if (!host) return null;
+  if (!host) return urlOrigin?.origin ?? null;
   const forwarded = firstHeader(headers.get("x-forwarded-proto"));
   const proto = forwarded || (url.startsWith("https:") ? "https" : "http");
   if (proto !== "http" && proto !== "https") return null;

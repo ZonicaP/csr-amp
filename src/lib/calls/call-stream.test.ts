@@ -67,6 +67,16 @@ test("forwarded host is the app origin, not the caller origin", () => {
   assert.equal(originAllowed("https://evil.example", expected), false);
 });
 
+test("a public request url is not replaced by a forwarded host", () => {
+  const expected = requestOrigin(
+    headers({ "x-forwarded-host": "evil.example", "x-forwarded-proto": "https", host: "csr-amp-ten.vercel.app" }),
+    "https://csr-amp-ten.vercel.app/api/calls/live",
+  );
+  assert.equal(expected, "https://csr-amp-ten.vercel.app");
+  assert.equal(originAllowed("https://evil.example", expected), false);
+  assert.equal(originAllowed("https://csr-amp-ten.vercel.app", expected), true);
+});
+
 test("client messages cannot change a call", () => {
   assert.equal(clientSocketAction("ping"), "ping");
   assert.equal(clientSocketAction('{"type":"ping"}'), "ping");

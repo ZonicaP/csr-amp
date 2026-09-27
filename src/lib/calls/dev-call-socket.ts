@@ -1,6 +1,6 @@
 import http from "node:http";
 import type { Duplex } from "node:stream";
-import { WebSocketServer } from "ws";
+import { WebSocketServer, type WebSocket } from "ws";
 import { attachCallSocket, originAllowed, requestOrigin, sendCallSnapshot, type CallSocket } from "@/lib/calls/call-stream";
 import { loadOpenCallSnapshot } from "@/lib/calls/call-stream-server";
 import { currentCsr } from "@/lib/csr/csr-service";
@@ -19,7 +19,7 @@ export function listenForDevCallSocket() {
   marker.__ampDevCallSocket = true;
   const wss = new WebSocketServer({ noServer: true, maxPayload: 4096 });
   const server = http.Server.prototype;
-  const emit = server.emit;
+  const emit = server.emit as (this: http.Server, event: string | symbol, ...args: unknown[]) => boolean;
   server.emit = function (this: http.Server, event: string | symbol, ...args: unknown[]) {
     if (event !== "upgrade") return emit.call(this, event, ...args);
     const req = args[0] as http.IncomingMessage;
@@ -55,7 +55,7 @@ async function acceptDevUpgrade(req: http.IncomingMessage, socket: Duplex, head:
     rejectUpgrade(socket, 403, "This call stream is only available from the portal");
     return;
   }
-  wss.handleUpgrade(req, socket, head, (ws) => {
+  wss.handleUpgrade(req, socket, head, (ws: WebSocket) => {
     const callSocket = ws as unknown as CallSocket;
     attachCallSocket(session.csrId, session.exp, callSocket);
     void sendCallSnapshot(callSocket, loadOpenCallSnapshot);

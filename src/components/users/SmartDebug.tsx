@@ -1,13 +1,20 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import Box from "@mui/material/Box";
 import IconButton from "@mui/material/IconButton";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
 import AccountAction from "@/components/users/AccountAction";
 import SendPaymentLink from "@/components/users/SendPaymentLink";
-import SmartDebugDialog, { type DebugAnswer } from "@/components/users/SmartDebugDialog";
+import type { DebugAnswer } from "@/components/users/SmartDebugDialog";
+
+const SmartDebugDialog = dynamic(() => import("@/components/users/SmartDebugDialog"));
+
+function preloadSmartDebug() {
+  void import("@/components/users/SmartDebugDialog");
+}
 import { actionsForQuestion, type AccountIssue, type AccountSnapshot, type SuggestedAction } from "@/lib/debug/account-issue";
 
 function actionKey(action: SuggestedAction) {
@@ -94,6 +101,8 @@ export default function SmartDebug({
           component="button"
           type="button"
           aria-haspopup="dialog"
+          onMouseEnter={preloadSmartDebug}
+          onFocus={preloadSmartDebug}
           onClick={() => {
             setStep("ask");
             setOpen(true);
@@ -121,6 +130,8 @@ export default function SmartDebug({
           component="button"
           type="button"
           aria-label="Smart debug"
+          onMouseEnter={preloadSmartDebug}
+          onFocus={preloadSmartDebug}
           onClick={() => {
             setStep("ask");
             setOpen(true);
@@ -161,6 +172,8 @@ export default function SmartDebug({
       ) : (
       <IconButton
         aria-label="Smart debug"
+        onMouseEnter={preloadSmartDebug}
+        onFocus={preloadSmartDebug}
         onClick={() => {
           setStep("ask");
           setOpen(true);
@@ -182,8 +195,8 @@ export default function SmartDebug({
         </svg>
       </IconButton>
       )}
-      <SmartDebugDialog
-        open={open && !covered}
+      {open && !covered ? <SmartDebugDialog
+        open
         membershipId={membershipId}
         issue={issue}
         question={question}
@@ -223,7 +236,7 @@ export default function SmartDebug({
             }}
           />
         )}
-      />
+      /> : null}
     </>
   );
 }

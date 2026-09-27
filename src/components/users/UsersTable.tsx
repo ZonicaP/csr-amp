@@ -116,6 +116,14 @@ export default function UsersTable() {
     : listed;
   const total = cached?.total ?? users.length;
 
+  const warmed = useRef(new Set<string>());
+
+  function warmCustomer(membershipId: string) {
+    if (warmed.current.has(membershipId)) return;
+    warmed.current.add(membershipId);
+    router.prefetch(`/customers/${encodeURIComponent(membershipId)}`);
+  }
+
   function openCustomer(membershipId: string) {
     router.push(`/customers/${encodeURIComponent(membershipId)}`);
   }
@@ -191,6 +199,8 @@ export default function UsersTable() {
                   tabIndex={0}
                   role="link"
                   aria-label={`${user.firstName} ${user.lastName}, ${user.membershipId}${user.onCall ? `, on a call with ${user.onCall.agent}` : ""}`}
+                  onMouseEnter={() => warmCustomer(user.membershipId)}
+                  onFocus={() => warmCustomer(user.membershipId)}
                   onClick={() => openCustomer(user.membershipId)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" || event.key === " ") {
@@ -242,6 +252,8 @@ export default function UsersTable() {
             tabIndex={0}
             role="link"
             aria-label={`${user.firstName} ${user.lastName}, ${user.membershipId}${user.onCall ? `, on a call with ${user.onCall.agent}` : ""}`}
+            onMouseEnter={() => warmCustomer(user.membershipId)}
+            onFocus={() => warmCustomer(user.membershipId)}
             onClick={() => openCustomer(user.membershipId)}
             onKeyDown={(event) => {
               if (event.key === "Enter" || event.key === " ") {
