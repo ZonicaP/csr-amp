@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import NextLink from "next/link";
-import { useRouter } from "next/navigation";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -10,10 +9,8 @@ import type { OpenCall } from "@/lib/calls/call-service";
 import { clearStartedCall, isCallStarting, readStartedCall, transferCallNotice } from "@/lib/calls/transfer-notice";
 
 const compactButton = { "&&": { minHeight: 36, py: "6px", px: 2, fontSize: 14, flexShrink: 0 } };
-const refreshWaitMs = 12_000;
 
 export default function TransferredCallNotice({ call }: { call: OpenCall | null }) {
-  const router = useRouter();
   const openReference = useRef<string | null>(null);
   const [ready, setReady] = useState(false);
   const [startedReference, setStartedReference] = useState<string | null>(null);
@@ -28,33 +25,6 @@ export default function TransferredCallNotice({ call }: { call: OpenCall | null 
     setStarting(isCallStarting(window.localStorage));
     setReady(true);
   }, [call]);
-
-  useEffect(() => {
-    let stopped = false;
-    let lastRefresh = 0;
-
-    function refresh() {
-      if (stopped || document.visibilityState !== "visible") return;
-      const now = Date.now();
-      if (now - lastRefresh < 2000) return;
-      lastRefresh = now;
-      router.refresh();
-    }
-
-    function onVisible() {
-      if (document.visibilityState === "visible") refresh();
-    }
-
-    document.addEventListener("visibilitychange", onVisible);
-    window.addEventListener("focus", onVisible);
-    const timer = window.setInterval(refresh, refreshWaitMs);
-    return () => {
-      stopped = true;
-      window.clearInterval(timer);
-      document.removeEventListener("visibilitychange", onVisible);
-      window.removeEventListener("focus", onVisible);
-    };
-  }, [router]);
 
   const notice = ready
     ? transferCallNotice({ call, startedReference, dismissedReference, starting })

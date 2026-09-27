@@ -19,6 +19,8 @@ import Typography from "@mui/material/Typography";
 import HighlightMatch from "@/components/HighlightMatch";
 import { AuthRequestError } from "@/lib/auth/http-client";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useCallStream } from "@/components/calls/CallStreamProvider";
+import { onCallForMembership } from "@/lib/calls/call-stream";
 import { customersCacheKey, useCustomersStore, type CustomersPage } from "@/lib/users/customers-store";
 import { customerMatchesQuery, phoneDigits, searchTokens, type UserListItem } from "@/lib/users/user-list";
 
@@ -107,7 +109,11 @@ export default function UsersTable() {
     previewRef.current = shownRef.current.filter((customer) => customerMatchesQuery(customer, debounced));
   }
 
-  const users = cached?.users ?? previewRef.current ?? [];
+  const listed = cached?.users ?? previewRef.current ?? [];
+  const stream = useCallStream();
+  const users = stream?.ready
+    ? listed.map((user) => ({ ...user, onCall: onCallForMembership(stream.calls, user.membershipId) }))
+    : listed;
   const total = cached?.total ?? users.length;
 
   function openCustomer(membershipId: string) {

@@ -9,6 +9,12 @@ import { prisma } from "@/lib/prisma";
 
 const noteLimit = 1000;
 
+function publishLiveCalls() {
+  void import("@/lib/calls/call-stream-server")
+    .then((mod) => mod.publishOpenCallSnapshot())
+    .catch(() => undefined);
+}
+
 const eventSelect = {
   id: true,
   summary: true,
@@ -81,6 +87,7 @@ export async function startCall(actorId: string) {
         data: { reference: randomCallReference(), csrId: actor.id, status: "OPEN" },
         select: { reference: true },
       });
+      publishLiveCalls();
       return call;
     } catch (error) {
       if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") throw error;
@@ -105,6 +112,7 @@ export async function linkCaller(actorId: string, membershipId: string) {
     data: { userId },
   });
   if (updated.count !== 1) throw new CsrError("CONFLICT", "That call is no longer open");
+  publishLiveCalls();
   return { reference: call.reference };
 }
 
@@ -115,6 +123,7 @@ export async function unlinkCaller(actorId: string) {
     data: { userId: null },
   });
   if (updated.count !== 1) throw new CsrError("NOT_FOUND", "There is no open call");
+  publishLiveCalls();
 }
 
 export async function endCall(actorId: string, input: { gaveReference: boolean; confirmedNothingElse: boolean; notes?: string }) {
@@ -132,6 +141,7 @@ export async function endCall(actorId: string, input: { gaveReference: boolean; 
     },
   });
   if (updated.count !== 1) throw new CsrError("CONFLICT", "That call is no longer open");
+  publishLiveCalls();
   return { reference: call.reference, status: closing.status };
 }
 
@@ -146,6 +156,7 @@ export async function requestCallback(actorId: string, note: string) {
     },
   });
   if (updated.count !== 1) throw new CsrError("CONFLICT", "That call is no longer open");
+  publishLiveCalls();
   return { reference: call.reference, status: "CALLBACK" as const };
 }
 
@@ -188,6 +199,7 @@ export async function handoffCall(actorId: string, targetId: string) {
     if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") throw error;
     throw new CsrError("CONFLICT", "That CSR already has an open call");
   }
+  publishLiveCalls();
   return { reference: call.reference, status: "OPEN" as const };
 }
 

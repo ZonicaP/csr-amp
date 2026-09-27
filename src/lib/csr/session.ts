@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
+import { closeCallStream, cookieValue } from "@/lib/calls/call-stream";
 
 const COOKIE = "csr_session";
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
@@ -63,8 +64,17 @@ export async function setSessionCookie(csrId: string): Promise<void> {
   });
 }
 
+export function sessionFromCookieHeader(header: string | null | undefined): SessionPayload | null {
+  const token = cookieValue(header, COOKIE);
+  if (!token) return null;
+  return decodeSession(token);
+}
+
 export async function clearSessionCookie(): Promise<void> {
   const cookieStore = await cookies();
+  const token = cookieStore.get(COOKIE)?.value;
+  const session = token ? decodeSession(token) : null;
+  if (session) closeCallStream(session.csrId);
   cookieStore.delete(COOKIE);
 }
 
