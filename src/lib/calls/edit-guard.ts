@@ -1,3 +1,5 @@
+export type HeldCaller = { reference: string; agent: string };
+
 export type CallForEditGuard = {
   reference: string;
   customer: { membershipId: string } | null;
@@ -10,10 +12,36 @@ export type CallEditNotice = {
   canLink: boolean;
 };
 
-export function callEditNotice(call: CallForEditGuard | null, membershipId: string): CallEditNotice | null {
+export function heldByOtherAgent(
+  membershipId: string,
+  myReference: string | null,
+  serverHold: HeldCaller | null,
+  liveCalls: { reference: string; membershipId: string | null; csrId: string; csrName: string }[] | null,
+): HeldCaller | null {
+  const mine = myReference?.trim() ?? "";
+  if (liveCalls) {
+    const wanted = membershipId.trim().toLowerCase();
+    const live = liveCalls.find((call) => call.membershipId !== null && call.membershipId.toLowerCase() === wanted);
+    if (!live || live.reference === mine) return null;
+    return { reference: live.reference, agent: live.csrName };
+  }
+  if (!serverHold || serverHold.reference === mine) return null;
+  return serverHold;
+}
+
+export function callEditNotice(call: CallForEditGuard | null, membershipId: string, held: HeldCaller | null = null): CallEditNotice | null {
   if (!call) return null;
   const linked = call.customer?.membershipId.trim() ?? "";
+  const taken = held && held.reference !== call.reference ? held : null;
   if (linked.length === 0) {
+    if (taken) {
+      return {
+        kind: "unlinked",
+        title: "Already on a call",
+        message: `This customer is already on ${taken.reference} with ${taken.agent}.`,
+        canLink: false,
+      };
+    }
     return {
       kind: "unlinked",
       title: "Call not linked",

@@ -49,6 +49,6 @@ test("a transfer stays on an active plan and a different vehicle", () => {
       destinationVehicleId: "car-2",
       destination: { vehicleLabel: "Other", membershipId: "AMP-10033", userId: "ethan", status: "OVERDUE", hasSamePlan: true },
     }),
-    { ok: false, code: "CONFLICT", error: "That vehicle already has this plan" },
+    { ok: false, code: "CONFLICT", error: "That vehicle already has a plan" },
   );
 });

@@ -101,7 +101,7 @@ export default function VehicleCard({ name, plate, since, plans, payment, paymen
           <Box sx={{ minWidth: 0 }}>
             <Typography sx={{ color: "#003264", fontWeight: 600 }}>{name}</Typography>
             <Typography sx={{ color: "#717680", fontSize: 14 }}>
-              {since ? `Since ${since}` : "No membership on this vehicle."}
+              {since ? `Since ${since}` : "No plan on this vehicle."}
             </Typography>
           </Box>
           <Box sx={{ flexShrink: 0, textAlign: "right" }}>

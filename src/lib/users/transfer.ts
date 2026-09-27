@@ -11,7 +11,7 @@ export function transferPlan(input: {
   if (!input.destination) return { ok: false, code: "NOT_FOUND", error: "That vehicle could not be found" };
   if (input.destination.userId !== input.plan.userId) return { ok: false, code: "INVALID", error: "A plan can only move to another vehicle on this membership" };
   if (input.destination.status === "CANCELLED") return { ok: false, code: "CONFLICT", error: "That membership is cancelled" };
-  if (input.destination.hasSamePlan) return { ok: false, code: "CONFLICT", error: "That vehicle already has this plan" };
+  if (input.destination.hasSamePlan) return { ok: false, code: "CONFLICT", error: "That vehicle already has a plan" };
   const summary = `${input.plan.planName} moved from ${input.plan.vehicleLabel} on ${input.plan.membershipId} to ${input.destination.vehicleLabel} on ${input.destination.membershipId}.`.slice(0, 500);
   return { ok: true, summary };
 }

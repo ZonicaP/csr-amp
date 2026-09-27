@@ -27,6 +27,17 @@ export type OpenCall = {
   customer: { membershipId: string; firstName: string; lastName: string } | null;
 };
 
+export function lookupOpenCallForCustomer(membershipId: string) {
+  const id = membershipId.trim();
+  if (!id) return Promise.resolve(null);
+  return prisma.call
+    .findFirst({
+      where: { status: "OPEN", user: { membershipId: { equals: id, mode: "insensitive" } } },
+      select: { reference: true, csr: { select: { displayName: true } } },
+    })
+    .then((call) => (call ? { reference: call.reference, agent: call.csr.displayName } : null));
+}
+
 export function lookupOpenCall(csrId: string) {
   return prisma.call
     .findFirst({
@@ -107,10 +118,23 @@ export async function linkCaller(actorId: string, membershipId: string) {
   if (!call) throw new CsrError("NOT_FOUND", "There is no open call");
   const userId = await customerIdFor(membershipId);
   if (!userId) throw new CsrError("NOT_FOUND", "That customer could not be found");
-  const updated = await prisma.call.updateMany({
-    where: { id: call.id, csrId: actorId, status: "OPEN" },
-    data: { userId },
+  const taken = await prisma.call.findFirst({
+    where: { status: "OPEN", userId, id: { not: call.id } },
+    select: { reference: true, csr: { select: { displayName: true } } },
   });
+  if (taken) throw new CsrError("CONFLICT", `This customer is already on ${taken.reference} with ${taken.csr.displayName}`);
+  let updated: { count: number };
+  try {
+    updated = await prisma.call.updateMany({
+      where: { id: call.id, csrId: actorId, status: "OPEN" },
+      data: { userId },
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      throw new CsrError("CONFLICT", "This customer is already on a call with another CSR");
+    }
+    throw error;
+  }
   if (updated.count !== 1) throw new CsrError("CONFLICT", "That call is no longer open");
   publishLiveCalls();
   return { reference: call.reference };

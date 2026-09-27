@@ -49,7 +49,13 @@ export default function TransferredCallNotice({ call }: { call: OpenCall | null 
       >
         <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, alignItems: { xs: "flex-start", sm: "center" }, gap: 1.5 }}>
           <Box sx={{ flex: 1 }}>{notice.message}</Box>
-          <Button component={NextLink} href={notice.href} variant="contained" sx={compactButton}>
+          <Button
+            component={NextLink}
+            href={notice.href}
+            variant="contained"
+            sx={compactButton}
+            onClick={() => setDismissedReference(call?.reference ?? null)}
+          >
             {notice.action}
           </Button>
         </Box>

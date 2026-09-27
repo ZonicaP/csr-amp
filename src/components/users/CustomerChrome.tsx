@@ -13,6 +13,7 @@ import AddVehicle from "@/components/users/AddVehicle";
 import LikelyIssue from "@/components/users/LikelyIssue";
 import SmartDebug from "@/components/users/SmartDebug";
 import type { OpenCall } from "@/lib/calls/call-service";
+import type { HeldCaller } from "@/lib/calls/edit-guard";
 import type { AccountIssue, AccountSnapshot, SuggestedAction } from "@/lib/debug/account-issue";
 import { PublishCustomerNav } from "@/components/users/CustomerNavProvider";
 
@@ -40,6 +41,7 @@ export default function CustomerChrome({
   issue,
   canAddVehicle = false,
   call = null,
+  busy = null,
   children,
 }: {
   membershipId: string;
@@ -50,6 +52,7 @@ export default function CustomerChrome({
   issue: AccountIssue;
   canAddVehicle?: boolean;
   call?: OpenCall | null;
+  busy?: HeldCaller | null;
   children: ReactNode;
 }) {
   const pathname = usePathname();
@@ -65,7 +68,7 @@ export default function CustomerChrome({
   const pageTitle = tabs.find((tab) => tab.match)?.label ?? "Info";
 
   return (
-    <CallEditGuard membershipId={membershipId} call={call ?? null}>
+    <CallEditGuard membershipId={membershipId} call={call ?? null} busy={busy}>
     <Box
       component="main"
       id="main"
@@ -101,7 +104,7 @@ export default function CustomerChrome({
             <AccountMenu membershipId={membershipId} actions={actions} maxDiscount={maxDiscount} />
           </Box>
         </Stack>
-        <CallerLink membershipId={membershipId} call={call} />
+        <CallerLink membershipId={membershipId} call={call} busy={busy} />
         {pathname === base ? <LikelyIssue membershipId={membershipId} issue={issue} maxDiscount={maxDiscount} /> : null}
         <Box
           component="nav"

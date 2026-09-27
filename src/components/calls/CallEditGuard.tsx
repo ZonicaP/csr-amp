@@ -11,7 +11,8 @@ import Typography from "@mui/material/Typography";
 import DialogCloseButton, { dialogFooterButton } from "@/components/DialogCloseButton";
 import { sheetDialogSx } from "@/components/sheetDialog";
 import { AuthRequestError, postJson } from "@/lib/auth/http-client";
-import { callEditNotice, type CallEditNotice, type CallForEditGuard } from "@/lib/calls/edit-guard";
+import { useHeldCaller } from "@/components/calls/useHeldCaller";
+import { callEditNotice, type CallEditNotice, type CallForEditGuard, type HeldCaller } from "@/lib/calls/edit-guard";
 
 const compactButton = { "&&": { minHeight: 36, py: "6px", px: 2, fontSize: 14 } };
 
@@ -28,13 +29,16 @@ export function useCallEditGuard() {
 export default function CallEditGuard({
   membershipId,
   call,
+  busy = null,
   children,
 }: {
   membershipId: string;
   call: CallForEditGuard | null;
+  busy?: HeldCaller | null;
   children: ReactNode;
 }) {
   const router = useRouter();
+  const held = useHeldCaller(membershipId, call?.reference ?? null, busy);
   const startRef = useRef<(() => void) | null>(null);
   const pendingRef = useRef<(() => void) | null>(null);
   const linkKey = `${membershipId}\n${call?.reference ?? ""}\n${call?.customer?.membershipId ?? ""}`;
@@ -52,7 +56,7 @@ export default function CallEditGuard({
 
   const guard = useCallback(
     (start: () => void) => {
-      const next = callEditNotice(shownCall, membershipId);
+      const next = callEditNotice(shownCall, membershipId, held);
       if (!next) {
         start();
         return;
@@ -62,7 +66,7 @@ export default function CallEditGuard({
       setError(null);
       setOpen(true);
     },
-    [membershipId, shownCall],
+    [held, membershipId, shownCall],
   );
 
   function continueEdit() {

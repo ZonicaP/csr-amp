@@ -6,18 +6,25 @@ import { useRouter } from "next/navigation";
 import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
+import { useHeldCaller } from "@/components/calls/useHeldCaller";
 import { AuthRequestError, postJson } from "@/lib/auth/http-client";
 import type { OpenCall } from "@/lib/calls/call-service";
+import type { HeldCaller } from "@/lib/calls/edit-guard";
 
 const linkButton = {
   "&&": { minHeight: 36, py: "6px", px: 2, fontSize: 14, color: "#003264", borderColor: "#E5E7EB", backgroundColor: "#FDFDFD" },
 };
 
-export default function CallerLink({ membershipId, call }: { membershipId: string; call: OpenCall | null }) {
+export default function CallerLink({ membershipId, call, busy = null }: { membershipId: string; call: OpenCall | null; busy?: HeldCaller | null }) {
   const router = useRouter();
+  const held = useHeldCaller(membershipId, call?.reference ?? null, busy);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  if (!call) return null;
+  if (!call && !held) return null;
+
+  if (!call) {
+    return <Typography sx={{ color: "#717680", fontSize: 14 }}>Already on {held?.reference} with {held?.agent}.</Typography>;
+  }
 
   const linkedHere = call.customer?.membershipId.toLowerCase() === membershipId.toLowerCase();
 
@@ -68,12 +75,13 @@ export default function CallerLink({ membershipId, call }: { membershipId: strin
           <Button variant="text" onClick={undo} disabled={pending} sx={{ flexShrink: 0, color: "#717680", "&&": { minHeight: 36, py: "6px", px: 1, fontSize: 14 } }}>
             {pending ? "Saving" : "Undo"}
           </Button>
-        ) : (
+        ) : held ? null : (
           <Button variant="outlined" onClick={link} disabled={pending} sx={{ ...linkButton, flexShrink: 0 }}>
             {pending ? "Saving" : "This is the caller"}
           </Button>
         )}
       </Stack>
+      {held && !linkedHere ? <Typography sx={{ color: "#717680", fontSize: 14 }}>Already on {held.reference} with {held.agent}.</Typography> : null}
       {error ? <Typography sx={{ color: "#FA4362", fontSize: 14 }}>{error}</Typography> : null}
     </Stack>
   );
