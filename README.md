@@ -1,43 +1,34 @@
 # CSR AMP
 
-Customer service portal for AMP car-wash memberships. CSRs look up a member, handle the call, and change the account from one place.
+Customer service portal for AMP car-wash memberships. A CSR looks up a member, handles the call, and changes the account from one place.
 
-The app is hosted at [https://csr-amp-ten.vercel.app/](https://csr-amp-ten.vercel.app/).
+Live app: [https://csr-amp-ten.vercel.app/](https://csr-amp-ten.vercel.app/).
 
-Access is invite-only. Email [pietersen.zonica@gmail.com](mailto:pietersen.zonica@gmail.com) to be invited as a CSR. An invited email can create an account on the signup page without that link. The link still fills in the email and locks it. After that, sign in and verify the email address.
+Access is invite-only. Email [pietersen.zonica@gmail.com](mailto:pietersen.zonica@gmail.com) for an invite. An invited email can also sign up without the link. The link still fills that email in and locks it. Then sign in and verify the address.
 
-Email about a customer goes to that customer. A payment link, a discount offer, cancellation, a refund request, plate documents, a plan change, and an account update all follow that rule. Seeded memberships use `@example.com`, which cannot be delivered, so those messages go to the signed-in CSR instead and the email says so. Invite, verification, and password-reset messages are for staff, so those go to the CSR address on that form.
+Customer mail goes to the member. That covers a payment link, a discount, cancellation, a refund request, plate documents, a plan change, and an account update. Seeded `@example.com` addresses cannot be delivered, so those messages go to the signed-in CSR and the email says so. Staff invites, verification, and password resets go to the CSR address on the form.
 
 ## Stack
 
-- Next.js (App Router) and React
-- Material UI
-- REST API routes
-- PostgreSQL, hosted on Supabase
-- Prisma
-- Vercel, with a deploy on push to `main` that applies migrations
-- SMTP email
-- Groq, for Smart debug answers when an API key is configured
+Next.js App Router, React, Material UI, REST routes, PostgreSQL on Supabase, Prisma, SMTP, and Groq for Smart debug when `GROQ_API_KEY` is set. A push to `main` deploys on Vercel and applies migrations.
 
-The project was built with Grok 4.7. Two local skill files guide that work: Vercel’s React best practices, and an AMP theme skill taken from the [AMP Memberships](https://ampmemberships.com/) site for color, type, and buttons.
+The project was built with Grok 4.7, using Vercel’s React best practices and an AMP theme taken from [ampmemberships.com](https://ampmemberships.com/).
 
 ## What you can do
 
-Sign in, reset a forgotten password, and open your profile from the AMP logo. Home and profile are the same page.
+Sign in, reset a forgotten password, and open your profile from the AMP logo. Home and profile are the same page. A CSR can change their own first and last name there.
 
-**Customers.** Search by name, email, phone, or membership id. Results update as you type. Open a customer for Info, Vehicles, Payments, and Logs. Edit their contact details. The address looks like `/customers/AMP-10033`.
+**Customers.** Search by name, email, phone, or membership id. Results update as you type. **On a call** limits the list to memberships on an open call. Open a customer for Info, Vehicles, Payments, and Logs, for example `/customers/AMP-10033`. Edit their contact details. A phone number needs 10 to 15 digits.
 
-**Vehicles.** See each vehicle and its plan. Basic Wash, Unlimited Wash, and The Works are color-coded. A cancelled plan uses a cancelled color. Add a vehicle with a year, a make and model suggested from cars, trucks, and SUVs, and a plate. Open a vehicle to change the plate, add or replace the plan, remove a plan, or transfer a plan to another vehicle on the same membership. One vehicle has one active plan.
+**Vehicles.** Each vehicle has one active plan: Basic Wash, Unlimited Wash, or The Works, each with its own color. A cancelled plan uses the cancelled color. Add a vehicle with a year, a make and model from cars, trucks, and SUVs, and a plate. Open a vehicle to change the plate, replace or remove the plan, or transfer it to another vehicle on the same membership.
 
-**Payments and account actions.** Review charges, including a failed payment and why it failed. Email a payment link. Paying that link records the charge and sets an overdue membership to active, so a wash can start. No card number is entered. A cancelled membership on that page says “This membership has been cancelled.” and has no Pay button. Offer a discount. Cancel a membership only after a confirmation and a reason. Reactivate a cancelled membership. Request a refund when a second charge of the same amount landed within two days. Email plate documents once for the whole account. A real address receives the message. A sample `@example.com` address is delivered to the signed-in CSR.
+**Account.** Review charges, including a failed payment and why it failed. Email a payment link. Paying it records the charge and sets an overdue membership to active, so a wash can start. No card number is entered. A cancelled membership says it has been cancelled and has no Pay button. Offer, update, or remove a discount. Cancel only after a confirmation and a reason, or reactivate a cancelled membership. Request a refund when a second charge of the same amount landed within two days. Email plate documents once for the account.
 
-**Calls.** Start a call from the header. On the customer page, **This is the caller** links that membership to the open call. Undo clears a wrong link. The customer list marks a membership that is on an open call, and names the CSR. End the call after confirming the reference was given and the caller had nothing else. From that same dialog, transfer the open call to another CSR and keep the same reference. The other CSR already needs a free line, and they see the call after a refresh. Request a call back from the same dialog. Search calls the same way as customers, filter to callbacks, and mark a callback as called. A customer’s Logs page lists their calls under the account events.
+**Calls.** Start a call from the header. **This is the caller** links the open call to the membership. Undo clears a wrong link. The customer list shows who is on a call, and with which CSR, from a live socket. End the call after confirming the reference was given and the caller had nothing else. That opens the call at `/calls/C-#####`. Transfer keeps the same reference and tells the other CSR, who must not already be on a call. Request a call back from the same dialog. Search calls, filter to callbacks, and mark a callback as called. A customer’s Logs page lists their calls with the account events.
 
-**Smart debug.** On a customer, ask what they are reporting or pick a common issue. A most likely note sits on the Info page. Answers stay on that membership, including coupons, a single wash, a card update, and previous calls. Coupon codes and expiry dates are not invented. The customer redeems coupons, buys a single wash, and changes their card in the AMP app. If a charge failed, the action in this portal is to email a payment link.
+**Smart debug.** On a customer, ask what they are reporting or pick a common issue. Info also shows the most likely standing issue. Answers stay on that membership. Coupons, a single wash, and changing a card happen in the AMP app. If a charge failed, email a payment link.
 
-**Team.** An admin sees the team, invites CSRs, assigns roles, and can disable an account.
-
-An agent can look up customers, edit contact details, add or remove a plan, transfer a plan, cancel a membership, and resolve an overdue payment. Discounts stop at 10%. An admin can do the same with no discount limit, and is the only role that can invite or change staff.
+**Team.** An admin invites CSRs, assigns roles, and can disable an account. An agent can do the customer work above. Discounts stop at 10% for an agent. An admin has no discount limit and is the only role that can invite or change staff.
 
 ## Prerequisites
 

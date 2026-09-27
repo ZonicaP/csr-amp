@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import StatusBadge from "@/components/StatusBadge";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
@@ -23,6 +24,14 @@ import { useCallStream } from "@/components/calls/CallStreamProvider";
 import { onCallForMembership } from "@/lib/calls/call-stream";
 import { customersCacheKey, useCustomersStore, type CustomersPage } from "@/lib/users/customers-store";
 import { customerMatchesQuery, phoneDigits, searchTokens, type UserListItem } from "@/lib/users/user-list";
+
+const compactButton = { "&&": { minHeight: 36, py: "6px", px: 2, fontSize: 14 } };
+
+function emptyCustomers(query: string, onCallOnly: boolean) {
+  if (query.trim() && onCallOnly) return "No customers on a call match that search.";
+  if (onCallOnly) return "No customers are on a call.";
+  return "No customers match that search.";
+}
 
 function OnCallLabel({ agent }: { agent: string }) {
   return (
@@ -85,11 +94,14 @@ export default function UsersTable() {
   const router = useRouter();
   const query = useCustomersStore((state) => state.query);
   const setQuery = useCustomersStore((state) => state.setQuery);
+  const onCallOnly = useCustomersStore((state) => state.onCallOnly);
+  const setOnCallOnly = useCustomersStore((state) => state.setOnCallOnly);
   const page = useCustomersStore((state) => state.page);
   const setPage = useCustomersStore((state) => state.setPage);
   const remember = useCustomersStore((state) => state.remember);
   const debounced = useDebouncedValue(query, 300);
   const [previousQuery, setPreviousQuery] = useState(debounced);
+  const [previousOnCall, setPreviousOnCall] = useState(onCallOnly);
   const [error, setError] = useState("");
   const [pending, setPending] = useState(true);
 
@@ -97,9 +109,13 @@ export default function UsersTable() {
     setPreviousQuery(debounced);
     if (page !== 1) setPage(1);
   }
+  if (onCallOnly !== previousOnCall) {
+    setPreviousOnCall(onCallOnly);
+    setPending(true);
+  }
 
   const requestPage = debounced === previousQuery ? page : 1;
-  const cached = useCustomersStore((state) => state.pages[customersCacheKey(debounced, requestPage)] ?? null);
+  const cached = useCustomersStore((state) => state.pages[customersCacheKey(debounced, requestPage, onCallOnly)] ?? null);
   const shownRef = useRef<UserListItem[]>([]);
   const previewRef = useRef<UserListItem[] | null>(null);
   if (cached) {
@@ -111,10 +127,16 @@ export default function UsersTable() {
 
   const listed = cached?.users ?? previewRef.current ?? [];
   const stream = useCallStream();
-  const users = stream?.ready
-    ? listed.map((user) => ({ ...user, onCall: onCallForMembership(stream.calls, user.membershipId) }))
-    : listed;
+  const withLiveCalls = listed.map((user) => {
+    if (!stream?.ready) return user;
+    const live = onCallForMembership(stream.calls, user.membershipId);
+    if (live) return { ...user, onCall: live };
+    if (onCallOnly) return user;
+    return { ...user, onCall: null };
+  });
+  const users = onCallOnly ? withLiveCalls.filter((user) => user.onCall) : withLiveCalls;
   const total = cached?.total ?? users.length;
+  const liveKey = onCallOnly && stream?.ready ? stream.calls.map((call) => `${call.reference}:${call.membershipId ?? ""}`).join(",") : "";
 
   const warmed = useRef(new Set<string>());
 
@@ -131,6 +153,7 @@ export default function UsersTable() {
   useEffect(() => {
     const controller = new AbortController();
     const params = new URLSearchParams({ q: debounced, page: String(requestPage) });
+    if (onCallOnly) params.set("onCall", "1");
     setPending(true);
     fetch(`/api/users?${params}`, { signal: controller.signal })
       .then(async (response) => {
@@ -138,7 +161,7 @@ export default function UsersTable() {
         if (!response.ok) {
           throw new AuthRequestError(body.error ?? "Something went wrong");
         }
-        remember(debounced, requestPage, {
+        remember(debounced, requestPage, onCallOnly, {
           users: body.users,
           page: body.page,
           pageSize: body.pageSize,
@@ -159,20 +182,33 @@ export default function UsersTable() {
         }
       });
     return () => controller.abort();
-  }, [debounced, remember, requestPage]);
+  }, [debounced, liveKey, onCallOnly, remember, requestPage]);
 
   return (
     <Stack spacing={2}>
       <Box component="search">
-        <TextField
-          label="Search customers"
-          placeholder="Name, email, phone, or membership ID"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          type="search"
-          autoComplete="off"
-          fullWidth
-        />
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ alignItems: { sm: "center" } }}>
+          <TextField
+            label="Search customers"
+            placeholder="Name, email, phone, or membership ID"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            type="search"
+            autoComplete="off"
+            fullWidth
+            sx={{ flex: 1 }}
+          />
+          <Button
+            type="button"
+            variant={onCallOnly ? "contained" : "outlined"}
+            aria-pressed={onCallOnly}
+            aria-label="On a call only"
+            onClick={() => setOnCallOnly(!onCallOnly)}
+            sx={{ ...compactButton, flexShrink: 0, alignSelf: { xs: "flex-start", sm: "center" } }}
+          >
+            On a call
+          </Button>
+        </Stack>
       </Box>
       {error ? <Alert severity="error">{error}</Alert> : null}
       {pending && users.length === 0 ? <Typography>Loading customers…</Typography> : null}
@@ -237,7 +273,7 @@ export default function UsersTable() {
               ))}
               {!pending && users.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5}>No customers match that search.</TableCell>
+                  <TableCell colSpan={5}>{emptyCustomers(debounced, onCallOnly)}</TableCell>
                 </TableRow>
               ) : null}
             </TableBody>
@@ -295,15 +331,15 @@ export default function UsersTable() {
             </Stack>
           </Paper>
         ))}
-        {!pending && users.length === 0 ? <Typography>No customers match that search.</Typography> : null}
+        {!pending && users.length === 0 ? <Typography>{emptyCustomers(debounced, onCallOnly)}</Typography> : null}
       </Stack>
       <TablePagination
         component="div"
         count={total}
         page={Math.max(0, requestPage - 1)}
         onPageChange={(_event, nextPage) => setPage(nextPage + 1)}
-        rowsPerPage={20}
-        rowsPerPageOptions={[20]}
+        rowsPerPage={cached?.pageSize ?? 10}
+        rowsPerPageOptions={[cached?.pageSize ?? 10]}
         onRowsPerPageChange={() => undefined}
         sx={{
           ".MuiTablePagination-toolbar": { px: { xs: 0, sm: 2 }, flexWrap: "wrap", justifyContent: "flex-end" },

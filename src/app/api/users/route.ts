@@ -13,7 +13,8 @@ export const GET = withApi(async function GET(request: Request) {
     const url = new URL(request.url);
     const query = url.searchParams.get("q") ?? "";
     const page = Number(url.searchParams.get("page") ?? "1");
-    const result = await listUsers(session.csrId, query, page);
+    const onCallOnly = url.searchParams.get("onCall") === "1";
+    const result = await listUsers(session.csrId, query, page, onCallOnly);
     return NextResponse.json(result);
   } catch (error) {
     return csrErrorResponse(error);

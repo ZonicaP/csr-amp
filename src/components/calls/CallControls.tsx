@@ -58,7 +58,6 @@ export default function CallControls({
         {call ? (
           <Typography sx={{ color: "#003264", fontWeight: 700, fontSize: 14, letterSpacing: "0.04em" }}>
             {call.reference}
-            {call.customer?.firstName ? ` · ${call.customer.firstName}` : ""}
           </Typography>
         ) : null}
         {call ? (

@@ -65,6 +65,14 @@ function approximateWhere(tokens: string[]) {
   );
 }
 
+function withOnCall(where: Prisma.Sql, onCallOnly: boolean) {
+  if (!onCallOnly) return where;
+  return Prisma.sql`(${where}) AND EXISTS (
+    SELECT 1 FROM "Call" c
+    WHERE c."userId" = "User".id AND c.status = 'OPEN'
+  )`;
+}
+
 async function queryUserPage(db: Queryable, where: Prisma.Sql, page: number): Promise<UserPage> {
   const offset = (page - 1) * USER_PAGE_SIZE;
   const rows = await db.$queryRaw<Array<Omit<UserListItem, "onCall"> & { total: number | null; onCallReference: string | null; onCallAgent: string | null }>>`
@@ -100,24 +108,24 @@ async function queryUserPage(db: Queryable, where: Prisma.Sql, page: number): Pr
   return { users, total };
 }
 
-export async function listUsers(actorId: string, query: string, page: number) {
+export async function listUsers(actorId: string, query: string, page: number, onCallOnly = false) {
   const actor = await currentCsr(actorId);
   if (!hasPermission(actor.roles, "customers:read")) {
     throw new CsrError("FORBIDDEN", "You do not have permission for this action");
   }
   const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
   const tokens = searchTokens(query);
-  const exact = await queryUserPage(prisma, exactWhere(tokens), safePage);
+  const exact = await queryUserPage(prisma, withOnCall(exactWhere(tokens), onCallOnly), safePage);
   if (exact.total > 0 || tokens.length === 0) {
     return { ...exact, page: safePage, pageSize: USER_PAGE_SIZE, approximate: false };
   }
-  return listApproximateUsers(tokens, safePage);
+  return listApproximateUsers(tokens, safePage, onCallOnly);
 }
 
-async function listApproximateUsers(tokens: string[], page: number) {
+async function listApproximateUsers(tokens: string[], page: number, onCallOnly: boolean) {
   const pageResult = await prisma.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT set_config('pg_trgm.word_similarity_threshold', '0.55', true)`;
-    return queryUserPage(tx, approximateWhere(tokens), page);
+    return queryUserPage(tx, withOnCall(approximateWhere(tokens), onCallOnly), page);
   });
   return { ...pageResult, page, pageSize: USER_PAGE_SIZE, approximate: pageResult.total > 0 };
 }
