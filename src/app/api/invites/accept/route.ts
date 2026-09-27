@@ -10,10 +10,12 @@ import { EmailDeliveryError } from "@/lib/email/smtp-transport";
 export const POST = withApi(async function POST(request: Request) {
   try {
     const body = (await request.json()) as Record<string, unknown>;
-    if (typeof body.token !== "string" || typeof body.password !== "string") {
-      return NextResponse.json({ error: "Invite token and password are required" }, { status: 400 });
+    const token = typeof body.token === "string" ? body.token : "";
+    const email = typeof body.email === "string" ? body.email : "";
+    if (typeof body.password !== "string" || (!token && !email)) {
+      return NextResponse.json({ error: "Email and password are required" }, { status: 400 });
     }
-    const result = await acceptInvite(body.token, body.password);
+    const result = await acceptInvite({ token, email, password: body.password });
     await setSessionCookie(result.csr.id);
     try {
       await createEmailService().send(

@@ -43,7 +43,7 @@ An agent can look up customers, edit contact details, add or remove a plan, tran
 
 Install these before cloning:
 
-- Node.js 20 or newer, with npm
+- Node.js 24 or newer, with npm
 - Docker Desktop, running
 - [Supabase CLI](https://supabase.com/docs/guides/local-development/cli/getting-started)
 

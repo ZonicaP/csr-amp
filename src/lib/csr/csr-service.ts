@@ -122,23 +122,46 @@ export async function deleteUnactivatedInvite(id: string) {
   await prisma.csr.deleteMany({ where: { id, status: CsrStatus.INVITED } });
 }
 
-export async function acceptInvite(token: string, password: string) {
-  if (password.length < 8) {
+export async function inviteEmailForToken(token: string) {
+  const trimmed = token.trim();
+  if (!trimmed) return null;
+  const csr = await prisma.csr.findUnique({
+    where: { inviteTokenHash: hashInviteToken(trimmed) },
+    select: { email: true, status: true },
+  });
+  if (!csr || csr.status !== CsrStatus.INVITED) return null;
+  return { email: csr.email };
+}
+
+export async function acceptInvite(input: { token?: string; email?: string; password: string }) {
+  if (input.password.length < 8) {
     throw new CsrError("INVALID", "Password must be at least 8 characters");
   }
-  const csr = await prisma.csr.findUnique({
-    where: { inviteTokenHash: hashInviteToken(token) },
-    select: csrIdentitySelect,
-  });
-  if (!csr || csr.status !== CsrStatus.INVITED) {
-    throw new CsrError("NOT_FOUND", "Invite is no longer valid");
+  const email = input.email?.trim().toLowerCase() ?? "";
+  const token = input.token?.trim() ?? "";
+  const csr = token
+    ? await prisma.csr.findUnique({ where: { inviteTokenHash: hashInviteToken(token) }, select: csrIdentitySelect })
+    : email
+      ? await prisma.csr.findFirst({ where: { email: { equals: email, mode: "insensitive" } }, select: csrIdentitySelect })
+      : null;
+  if (!csr) {
+    throw new CsrError("NOT_FOUND", token ? "This invite is no longer valid" : "An admin needs to invite this email before you can create an account");
+  }
+  if (csr.status === CsrStatus.ACTIVE) {
+    throw new CsrError("CONFLICT", "This email already has an account. Sign in.");
+  }
+  if (csr.status !== CsrStatus.INVITED) {
+    throw new CsrError("NOT_FOUND", "This invite is no longer open");
+  }
+  if (email && email !== csr.email.toLowerCase()) {
+    throw new CsrError("INVALID", "Use the email address on the invite");
   }
   const verificationToken = createInviteToken();
   const updated = await prisma.csr.update({
     where: { id: csr.id },
     data: {
       status: CsrStatus.ACTIVE,
-      passwordHash: hashPassword(password),
+      passwordHash: hashPassword(input.password),
       inviteTokenHash: null,
       emailVerifiedAt: null,
       emailVerificationTokenHash: hashInviteToken(verificationToken),
@@ -217,6 +240,32 @@ export async function listCsrs(actorId: string, query = "") {
     orderBy: [{ surname: "asc" }, { name: "asc" }],
   });
   return csrs.map(toPublicCsr).filter((csr) => csrMatchesQuery(csr, query));
+}
+
+export async function resendInvite(actorId: string, csrId: string) {
+  await requireCsr(actorId, "csr:manage");
+  const csr = await prisma.csr.findUnique({
+    where: { id: csrId },
+    select: { id: true, name: true, email: true, status: true, updatedAt: true },
+  });
+  if (!csr || csr.status !== CsrStatus.INVITED) {
+    throw new CsrError("NOT_FOUND", "That invite is no longer open");
+  }
+  if (Date.now() - csr.updatedAt.getTime() < RESEND_WINDOW_MS) {
+    throw new CsrError("INVALID", "Please wait a minute before sending another invite");
+  }
+  const token = createInviteToken();
+  return { id: csr.id, name: csr.name, email: csr.email, token };
+}
+
+export async function saveInviteToken(csrId: string, token: string) {
+  const updated = await prisma.csr.updateMany({
+    where: { id: csrId, status: CsrStatus.INVITED },
+    data: { inviteTokenHash: hashInviteToken(token) },
+  });
+  if (updated.count !== 1) {
+    throw new CsrError("NOT_FOUND", "That invite is no longer open");
+  }
 }
 
 export async function cancelInvite(actorId: string, csrId: string) {
