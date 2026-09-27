@@ -40,6 +40,9 @@ yarn-error.log*
 # local agent skills (not part of the app)
 .cursor/skills/
 
+# local notes, not part of the app
+/local/
+
 # supabase cli
 supabase/.temp
 
