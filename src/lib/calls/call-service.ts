@@ -152,7 +152,6 @@ export async function unlinkCaller(actorId: string) {
 
 export async function endCall(actorId: string, input: { gaveReference: boolean; confirmedNothingElse: boolean; notes?: string }) {
   const closing = closingCall(input);
-  if (!closing.ok) throw new CsrError("INVALID", closing.error);
   const call = await openCallRow(actorId);
   const updated = await prisma.call.updateMany({
     where: { id: call.id, csrId: actorId, status: "OPEN" },
