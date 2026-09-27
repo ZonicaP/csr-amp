@@ -151,11 +151,10 @@ export default function CallDialog({
   }
 
   async function end() {
-    if (!gaveReference || !confirmedNothingElse) return;
     setPending("end");
     setDialogError(null);
     try {
-      const result = await postJson<CurrentCallResult>("/api/calls/current", { action: "end", gaveReference: true, confirmedNothingElse: true, notes });
+      const result = await postJson<CurrentCallResult>("/api/calls/current", { action: "end", gaveReference, confirmedNothingElse, notes });
       finish(result.call?.status);
     } catch (caught) {
       setDialogError(caught instanceof AuthRequestError ? caught.message : "That call could not be ended");
@@ -245,7 +244,7 @@ export default function CallDialog({
                 <NoteField notes={notes} notesError={notesError} onNotes={onNotes} />
                 {tab === "end" && dialogError ? <Alert severity="error">{dialogError}</Alert> : null}
                 <Box sx={{ display: "flex" }}>
-                  <Button variant="contained" onClick={end} disabled={pending !== null || !gaveReference || !confirmedNothingElse} sx={footerButton}>
+                  <Button variant="contained" onClick={end} disabled={pending !== null} sx={footerButton}>
                     {pending === "end" ? "Ending…" : "End call"}
                   </Button>
                 </Box>

@@ -2,10 +2,21 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { closingCall } from "./closing.ts";
 
-test("ending a call requires both closing steps", () => {
-  const message = { ok: false, error: "Confirm both closing steps before ending the call" };
-  assert.deepEqual(closingCall({ gaveReference: true, confirmedNothingElse: false }), message);
-  assert.deepEqual(closingCall({ gaveReference: false, confirmedNothingElse: true, notes: "left a note" }), message);
+test("ending a call does not require the closing checkboxes", () => {
+  assert.deepEqual(closingCall({ gaveReference: false, confirmedNothingElse: false }), {
+    ok: true,
+    status: "CLOSED",
+    gaveReference: false,
+    confirmedNothingElse: false,
+    closingNotes: null,
+  });
+  assert.deepEqual(closingCall({ gaveReference: true, confirmedNothingElse: false, notes: "  line dropped  " }), {
+    ok: true,
+    status: "CLOSED",
+    gaveReference: true,
+    confirmedNothingElse: false,
+    closingNotes: "line dropped",
+  });
 });
 
 test("a confirmed call closes and keeps a trimmed note", () => {
