@@ -22,7 +22,7 @@ describe("own CSR name", () => {
   it("uses the same 80 character limit as customer names", () => {
     const atLimit = "a".repeat(80);
     const over = "a".repeat(81);
-    const account = { firstName: "Amelia", lastName: "Keller", email: "amelia@example.com", phone: "555-010-41" };
+    const account = { firstName: "Amelia", lastName: "Keller", email: "amelia@example.com", phone: "(404) 555-0133" };
     assert.equal("value" in parseAccountDetails({ ...account, firstName: atLimit }), true);
     assert.equal("error" in parseAccountDetails({ ...account, firstName: over }), true);
     assert.equal("value" in parseOwnName({ name: atLimit, surname: "Lee" }), true);

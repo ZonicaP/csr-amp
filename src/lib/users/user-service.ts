@@ -307,10 +307,11 @@ export async function createVehicle(
 
 export async function publicPaymentDue(membershipId: string) {
   const customer = await prisma.user.findFirst({
-    where: { membershipId: { equals: membershipId, mode: "insensitive" }, status: "OVERDUE" },
+    where: { membershipId: { equals: membershipId, mode: "insensitive" } },
     select: {
       firstName: true,
       membershipId: true,
+      status: true,
       vehicles: { orderBy: { createdAt: "asc" }, take: 1, select: { year: true, make: true, model: true } },
       purchases: { where: { failureReason: { not: null } }, orderBy: { purchasedAt: "desc" }, take: 1, select: { description: true, amount: true, failureReason: true } },
     },
@@ -318,9 +319,11 @@ export async function publicPaymentDue(membershipId: string) {
   const purchase = customer?.purchases[0] ?? null;
   const vehicle = customer?.vehicles[0];
   const vehicleName = vehicle ? [vehicle.year, vehicle.make, vehicle.model].filter(Boolean).join(" ") : "";
-  const due = overduePaymentDue(customer ? "OVERDUE" : "ACTIVE", purchase, vehicleName);
-  if (!customer || !purchase || !due) return null;
+  const due = overduePaymentDue(customer?.status ?? "ACTIVE", purchase, vehicleName);
+  if (due && "cancelled" in due) return { state: "cancelled" as const };
+  if (!customer || !purchase || !due) return { state: "clear" as const };
   return {
+    state: "due" as const,
     name: customer.firstName,
     membershipId: customer.membershipId,
     description: due.description,

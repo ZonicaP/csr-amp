@@ -16,7 +16,7 @@ export function parseEmail(input: string): { value: string } | { error: string }
 export function parsePhone(input: string): { value: string | null } | { error: string } {
   const phone = input.trim();
   const digits = phone.replace(/\D/g, "");
-  if (phone && (digits.length < 7 || digits.length > 15)) return { error: "Enter a phone number with 7 to 15 digits" };
+  if (phone && (digits.length < 10 || digits.length > 15)) return { error: "Enter a phone number with 10 to 15 digits" };
   return { value: phone || null };
 }
 

@@ -7,10 +7,15 @@ export function paymentLinkDescription(
   return { ok: true, description: name ? `${purchase.description} on ${name}` : purchase.description };
 }
 
+export const cancelledMembershipNotice = "This membership has been cancelled.";
+
 export function settledOverduePayment(input: {
   status: "ACTIVE" | "OVERDUE" | "CANCELLED";
   purchase: { description: string; amount: string; failureReason: string | null } | null;
 }) {
+  if (input.status === "CANCELLED") {
+    return { ok: false as const, error: cancelledMembershipNotice };
+  }
   if (input.status !== "OVERDUE" || !input.purchase?.failureReason) {
     return { ok: false as const, error: "Nothing is due on this membership" };
   }
@@ -22,7 +27,8 @@ export function overduePaymentDue(
   status: "ACTIVE" | "OVERDUE" | "CANCELLED",
   purchase: { description: string; failureReason: string | null } | null,
   vehicleName: string,
-) {
+): { description: string } | { cancelled: true } | null {
+  if (status === "CANCELLED") return { cancelled: true };
   if (status !== "OVERDUE") return null;
   const link = paymentLinkDescription(purchase, vehicleName);
   return link.ok ? { description: link.description } : null;

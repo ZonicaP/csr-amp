@@ -29,6 +29,7 @@ export default function Navbar({ name, call, canEscalate = false }: { name: stri
   const customer = useCustomerNav();
   const onCustomer = /^\/customers\/[^/]+/.test(pathname);
   const onProfile = pathname === "/profile" || pathname.startsWith("/profile/");
+  const hideProfile = onCustomer || call !== null;
 
   return (
     <Box
@@ -91,7 +92,7 @@ export default function Navbar({ name, call, canEscalate = false }: { name: stri
         {onCustomer ? customer?.name : null}
       </Box>
       <CallControls call={call} canEscalate={canEscalate} />
-      {onCustomer ? null : (
+      {hideProfile ? null : (
         <Box
           component={NextLink}
           href="/profile"

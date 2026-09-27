@@ -23,3 +23,16 @@ test("a paid charge or an account that is not overdue does not get a payment lin
   assert.deepEqual(settledOverduePayment({ status: "ACTIVE", purchase: { ...failed, amount: "$19.99" } }), { ok: false, error: "Nothing is due on this membership" });
   assert.deepEqual(settledOverduePayment({ status: "OVERDUE", purchase: null }), { ok: false, error: "Nothing is due on this membership" });
 });
+
+test("a cancelled membership is refused and is not settled", () => {
+  assert.deepEqual(overduePaymentDue("CANCELLED", failed, "2022 Tesla Model 3"), { cancelled: true });
+  assert.deepEqual(overduePaymentDue("CANCELLED", null, ""), { cancelled: true });
+  assert.deepEqual(settledOverduePayment({ status: "CANCELLED", purchase: { ...failed, amount: "$19.99" } }), {
+    ok: false,
+    error: "This membership has been cancelled.",
+  });
+  assert.deepEqual(settledOverduePayment({ status: "CANCELLED", purchase: null }), {
+    ok: false,
+    error: "This membership has been cancelled.",
+  });
+});
