@@ -91,27 +91,29 @@ export default function Navbar({ name, call, canEscalate = false }: { name: stri
         {onCustomer ? customer?.name : null}
       </Box>
       <CallControls call={call} canEscalate={canEscalate} />
-      <Box
-        component={NextLink}
-        href="/profile"
-        aria-label={`Account, ${name}`}
-        aria-current={onProfile ? "page" : undefined}
-        sx={{
-          flexShrink: 0,
-          width: 40,
-          height: 40,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          borderRadius: "50%",
-          border: "1px solid #E5E7EB",
-          color: onProfile ? "#0B75E1" : "#003264",
-          backgroundColor: onProfile ? "rgba(11, 117, 225, 0.1)" : "#FFFFFF",
-          textDecoration: "none",
-        }}
-      >
-        <ProfileIcon />
-      </Box>
+      {onCustomer ? null : (
+        <Box
+          component={NextLink}
+          href="/profile"
+          aria-label={`Account, ${name}`}
+          aria-current={onProfile ? "page" : undefined}
+          sx={{
+            flexShrink: 0,
+            width: 40,
+            height: 40,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: "50%",
+            border: "1px solid #E5E7EB",
+            color: onProfile ? "#0B75E1" : "#003264",
+            backgroundColor: onProfile ? "rgba(11, 117, 225, 0.1)" : "#FFFFFF",
+            textDecoration: "none",
+          }}
+        >
+          <ProfileIcon />
+        </Box>
+      )}
     </Box>
   );
 }

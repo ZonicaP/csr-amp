@@ -33,6 +33,9 @@ export default function CallControls({
     setError(null);
     try {
       await postJson("/api/calls", {});
+      if (!/^\/customers\/[^/]+/.test(window.location.pathname)) {
+        router.push("/customers");
+      }
       router.refresh();
     } catch (caught) {
       setError(caught instanceof AuthRequestError ? caught.message : "That call could not be started");

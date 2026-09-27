@@ -4,14 +4,15 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
-import Dialog from "@mui/material/Dialog";
+import Dialog from "@/components/Dialog";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
+import { useCallEditGuard } from "@/components/calls/CallEditGuard";
 import { dialogFooterButton } from "@/components/DialogCloseButton";
-import { parseAccountDetails } from "@/lib/users/account-details";
+import { parseAccountDetails, parseEmail, parsePhone } from "@/lib/users/account-details";
 
 export default function EditAccount({
   membershipId,
@@ -27,19 +28,24 @@ export default function EditAccount({
   phone: string | null;
 }) {
   const router = useRouter();
+  const guardEdit = useCallEditGuard();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState({ firstName, lastName, email, phone: phone ?? "" });
   const [sending, setSending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   function begin() {
-    setDraft({ firstName, lastName, email, phone: phone ?? "" });
-    setMessage(null);
-    setSending(false);
-    setOpen(true);
+    guardEdit(() => {
+      setDraft({ firstName, lastName, email, phone: phone ?? "" });
+      setMessage(null);
+      setSending(false);
+      setOpen(true);
+    });
   }
 
   const parsed = parseAccountDetails(draft);
+  const emailField = parseEmail(draft.email);
+  const phoneField = parsePhone(draft.phone);
   const unchanged =
     "value" in parsed &&
     parsed.value.firstName === firstName &&
@@ -113,8 +119,23 @@ export default function EditAccount({
           <Stack spacing={1.5} sx={{ pb: { xs: "max(16px, env(safe-area-inset-bottom))", md: 1 } }}>
             <TextField label="First name" value={draft.firstName} onChange={(event) => setDraft({ ...draft, firstName: event.target.value.slice(0, 80) })} fullWidth autoFocus />
             <TextField label="Last name" value={draft.lastName} onChange={(event) => setDraft({ ...draft, lastName: event.target.value.slice(0, 80) })} fullWidth />
-            <TextField label="Email" type="email" value={draft.email} onChange={(event) => setDraft({ ...draft, email: event.target.value.slice(0, 254) })} fullWidth />
-            <TextField label="Phone" value={draft.phone} onChange={(event) => setDraft({ ...draft, phone: event.target.value.slice(0, 24) })} helperText="Leave blank if there is no number" fullWidth />
+            <TextField
+              label="Email"
+              type="email"
+              value={draft.email}
+              onChange={(event) => setDraft({ ...draft, email: event.target.value.slice(0, 254) })}
+              error={"error" in emailField}
+              helperText={"error" in emailField ? emailField.error : undefined}
+              fullWidth
+            />
+            <TextField
+              label="Phone"
+              value={draft.phone}
+              onChange={(event) => setDraft({ ...draft, phone: event.target.value.slice(0, 24) })}
+              error={"error" in phoneField}
+              helperText={"error" in phoneField ? phoneField.error : "Leave blank if there is no number"}
+              fullWidth
+            />
             {message ? <Typography sx={{ color: "#FA4362", fontSize: 14 }}>{message}</Typography> : null}
             <Stack direction="row" spacing={1}>
               <Button variant="outlined" onClick={() => setOpen(false)} disabled={sending} sx={dialogFooterButton}>

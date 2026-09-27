@@ -47,7 +47,7 @@ export const POST = withApi(async function POST(request: Request) {
     const result = await inviteCsr(session.csrId, {
       name: body.name,
       surname: body.surname,
-      email: body.email.toLowerCase(),
+      email: body.email,
       displayName: body.displayName,
       roles: body.roles,
     });

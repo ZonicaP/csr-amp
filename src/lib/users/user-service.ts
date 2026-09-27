@@ -130,6 +130,8 @@ const customerSelect = {
   email: true,
   phone: true,
   status: true,
+  discountPercent: true,
+  discountPeriod: true,
   createdAt: true,
   vehicles: {
     orderBy: { createdAt: "asc" as const },

@@ -132,7 +132,7 @@ export async function endCall(actorId: string, input: { gaveReference: boolean; 
     },
   });
   if (updated.count !== 1) throw new CsrError("CONFLICT", "That call is no longer open");
-  return { reference: call.reference };
+  return { reference: call.reference, status: closing.status };
 }
 
 export async function requestCallback(actorId: string, note: string) {
@@ -146,7 +146,7 @@ export async function requestCallback(actorId: string, note: string) {
     },
   });
   if (updated.count !== 1) throw new CsrError("CONFLICT", "That call is no longer open");
-  return { reference: call.reference };
+  return { reference: call.reference, status: "CALLBACK" as const };
 }
 
 export async function listEscalationAdmins(actorId: string) {
@@ -187,7 +187,7 @@ export async function escalateCall(actorId: string, adminId: string, note: strin
     },
   });
   if (updated.count !== 1) throw new CsrError("CONFLICT", "That call is no longer open");
-  return { reference: call.reference };
+  return { reference: call.reference, status: "CALLBACK" as const };
 }
 
 export async function listHandoffCsrs(actorId: string) {
@@ -229,7 +229,7 @@ export async function handoffCall(actorId: string, targetId: string) {
     if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") throw error;
     throw new CsrError("CONFLICT", "That CSR already has an open call");
   }
-  return { reference: call.reference };
+  return { reference: call.reference, status: "OPEN" as const };
 }
 
 export async function searchCalls(actorId: string, query: string, options?: { callbacksOnly?: boolean }) {

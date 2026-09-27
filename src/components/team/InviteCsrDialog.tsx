@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
-import Dialog from "@mui/material/Dialog";
+import Dialog from "@/components/Dialog";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import Stack from "@mui/material/Stack";
@@ -12,6 +12,7 @@ import { dialogFooterButton } from "@/components/DialogCloseButton";
 import { sheetDialogSx } from "@/components/sheetDialog";
 import { AuthRequestError, postJson } from "@/lib/auth/http-client";
 import { roleLabel, roleMenu, roleOptions, type CsrRoleName } from "@/components/team/team-roles";
+import { parseEmail } from "@/lib/users/account-details";
 
 const compactButton = { "&&": { minHeight: 36, py: "6px", px: 2, fontSize: 14 } };
 
@@ -29,15 +30,25 @@ export default function InviteCsrDialog({ open, onClose, onInvited }: { open: bo
     onClose();
   }
 
+  const parsedEmail = parseEmail(email);
+
   async function invite(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!name.trim() || !surname.trim()) {
+      setError("Name, surname, email, display name, and roles are required");
+      return;
+    }
+    if ("error" in parsedEmail) {
+      setError(parsedEmail.error);
+      return;
+    }
     setSending(true);
     setError(null);
     try {
       await postJson("/api/csrs", {
         name: name.trim(),
         surname: surname.trim(),
-        email: email.trim(),
+        email: parsedEmail.value,
         displayName: `${name.trim()} ${surname.trim()}`,
         roles: [role],
       });
@@ -57,11 +68,20 @@ export default function InviteCsrDialog({ open, onClose, onInvited }: { open: bo
     <Dialog open={open} onClose={close} fullWidth maxWidth="sm" sx={sheetDialogSx()}>
       <DialogTitle sx={{ color: "#003264" }}>Invite a CSR</DialogTitle>
       <DialogContent>
-        <Stack component="form" id="invite-csr" onSubmit={invite} spacing={2} sx={{ pt: 1, pb: { xs: "max(16px, env(safe-area-inset-bottom))", md: 1 } }}>
+        <Stack component="form" id="invite-csr" noValidate onSubmit={invite} spacing={2} sx={{ pt: 1, pb: { xs: "max(16px, env(safe-area-inset-bottom))", md: 1 } }}>
           {error ? <Alert severity="error">{error}</Alert> : null}
           <TextField label="Name" value={name} onChange={(event) => setName(event.target.value)} required autoComplete="given-name" />
           <TextField label="Surname" value={surname} onChange={(event) => setSurname(event.target.value)} required autoComplete="family-name" />
-          <TextField label="Email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required autoComplete="email" />
+          <TextField
+            label="Email"
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            required
+            autoComplete="email"
+            error={"error" in parsedEmail && email.trim().length > 0}
+            helperText={"error" in parsedEmail && email.trim().length > 0 ? parsedEmail.error : undefined}
+          />
           <TextField
             select
             label="Role"

@@ -6,12 +6,14 @@ import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
+import { useCallEditGuard } from "@/components/calls/CallEditGuard";
 import { parsePlate } from "@/lib/users/plate";
 
 const fieldButton = { "&&": { minHeight: 36, py: "6px", px: 2, fontSize: 14 } };
 
 export default function PlateField({ membershipId, vehicleId, plate }: { membershipId: string; vehicleId: string; plate: string | null }) {
   const router = useRouter();
+  const guardEdit = useCallEditGuard();
   const [draft, setDraft] = useState(plate ?? "");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -44,7 +46,7 @@ export default function PlateField({ membershipId, vehicleId, plate }: { members
   return (
     <Stack spacing={1}>
       <TextField label="Plate" value={draft} onChange={(event) => setDraft(event.target.value.toUpperCase().slice(0, 8))} fullWidth />
-      <Button variant="contained" onClick={save} disabled={saving || !("value" in parsed) || unchanged} sx={{ ...fieldButton, alignSelf: "flex-end" }}>
+      <Button variant="contained" onClick={() => guardEdit(() => { void save(); })} disabled={saving || !("value" in parsed) || unchanged} sx={{ ...fieldButton, alignSelf: "flex-end" }}>
         {saving ? "Saving" : "Save plate"}
       </Button>
       {message ? <Typography sx={{ color: "#FA4362", fontSize: 14 }}>{message}</Typography> : null}

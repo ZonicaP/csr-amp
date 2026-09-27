@@ -4,6 +4,7 @@ import Chip from "@mui/material/Chip";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
+import ProfileNameForm from "@/components/profile/ProfileNameForm";
 import SignOutButton from "@/components/SignOutButton";
 import { requireVerifiedCsr } from "@/lib/csr/guard";
 
@@ -48,6 +49,7 @@ export default async function ProfilePage() {
               </Stack>
               <Typography>{csr.email}</Typography>
             </Stack>
+            <ProfileNameForm id={csr.id} name={csr.name} surname={csr.surname} />
             <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
               <SignOutButton />
             </Box>

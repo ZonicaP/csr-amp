@@ -6,6 +6,7 @@ import { EmailDeliveryError } from "@/lib/email/smtp-transport";
 import { authBlocked, recordAuthFailure } from "@/lib/csr/auth-limit";
 import { appUrl, createEmailService } from "@/lib/email/email-service";
 import { withApi } from "@/lib/http/with-api";
+import { parseEmail } from "@/lib/users/account-details";
 
 export const POST = withApi(async function POST(request: Request) {
   try {
@@ -13,7 +14,11 @@ export const POST = withApi(async function POST(request: Request) {
     if (typeof body.email !== "string") {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
     }
-    const email = body.email.toLowerCase();
+    const parsedEmail = parseEmail(body.email);
+    if (!("value" in parsedEmail)) {
+      return NextResponse.json({ error: parsedEmail.error }, { status: 400 });
+    }
+    const email = parsedEmail.value;
     const limited = await authBlocked(`reset:${email}`, 5);
     if (!limited.ok) {
       const minutes = Math.max(1, Math.ceil(limited.retryAfter / 60));

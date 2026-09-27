@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Button from "@mui/material/Button";
+import { useCallEditGuard } from "@/components/calls/CallEditGuard";
 
 export default function SendPaymentLink({
   membershipId,
@@ -16,11 +17,10 @@ export default function SendPaymentLink({
   onActivate?: () => void;
   textColor?: string;
 }) {
+  const guardEdit = useCallEditGuard();
   const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
 
-  async function send(event: React.MouseEvent) {
-    onActivate?.();
-    event.stopPropagation();
+  async function deliver() {
     setState("sending");
     const response = await fetch(`/api/customers/${encodeURIComponent(membershipId)}/payment-link`, {
       method: "POST",
@@ -28,6 +28,14 @@ export default function SendPaymentLink({
       body: JSON.stringify({ purchaseId }),
     });
     setState(response.ok ? "sent" : "error");
+  }
+
+  function send(event: React.MouseEvent) {
+    event.stopPropagation();
+    onActivate?.();
+    guardEdit(() => {
+      void deliver();
+    });
   }
 
   const label = state === "sent" ? "Email sent" : state === "sending" ? "Sending" : state === "error" ? "Try again" : "Email payment link";

@@ -29,6 +29,8 @@ model User {
   phoneDigits     String        @default(dbgenerated("regexp_replace(COALESCE(\"phone\", ''), '[^0-9]', '', 'g')"))
   membershipIdKey String        @default(dbgenerated("regexp_replace(upper(\"membershipId\"), '[^A-Z0-9]', '', 'g')"))
   status          AccountStatus @default(ACTIVE)
+  discountPercent Int?
+  discountPeriod  String?
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
   vehicles  Vehicle[]

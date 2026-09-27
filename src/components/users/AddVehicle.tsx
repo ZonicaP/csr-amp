@@ -4,13 +4,14 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Autocomplete from "@mui/material/Autocomplete";
 import Button from "@mui/material/Button";
-import Dialog from "@mui/material/Dialog";
+import Dialog from "@/components/Dialog";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import MenuItem from "@mui/material/MenuItem";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
+import { useCallEditGuard } from "@/components/calls/CallEditGuard";
 import DialogCloseButton, { dialogFooterButton } from "@/components/DialogCloseButton";
 import { matchVehicleNames } from "@/lib/vehicles/names";
 import { vehicleYears } from "@/lib/users/vehicle-year";
@@ -37,6 +38,7 @@ function catalog(path: string) {
 
 export default function AddVehicle({ membershipId }: { membershipId: string }) {
   const router = useRouter();
+  const guardEdit = useCallEditGuard();
   const [open, setOpen] = useState(false);
   const [year, setYear] = useState("");
   const [make, setMake] = useState("");
@@ -97,7 +99,7 @@ export default function AddVehicle({ membershipId }: { membershipId: string }) {
 
   return (
     <>
-      <Button variant="outlined" onClick={() => setOpen(true)} sx={{ ...addButton, alignSelf: "flex-end" }}>
+      <Button variant="outlined" onClick={() => guardEdit(() => setOpen(true))} sx={{ ...addButton, alignSelf: "flex-end" }}>
         Add vehicle
       </Button>
       <Dialog

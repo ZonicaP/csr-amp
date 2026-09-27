@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { createInviteToken, hashInviteToken, hashPassword, verifyPassword } from "@/lib/csr/password";
 import { hasPermission, type Permission } from "@/lib/csr/permissions";
 import { csrMatchesQuery } from "@/lib/csr/team-search";
+import { parseOwnName } from "@/lib/csr/own-name";
+import { parseEmail } from "@/lib/users/account-details";
 
 const roleSelect = { select: { role: true } } as const;
 
@@ -98,7 +100,10 @@ export async function inviteCsr(
   if (input.roles.length === 0) {
     throw new CsrError("INVALID", "Assign at least one role");
   }
-  const existing = await prisma.csr.findUnique({ where: { email: input.email }, select: { id: true } });
+  const parsedEmail = parseEmail(input.email);
+  if ("error" in parsedEmail) throw new CsrError("INVALID", parsedEmail.error);
+  const email = parsedEmail.value;
+  const existing = await prisma.csr.findUnique({ where: { email }, select: { id: true } });
   if (existing) {
     throw new CsrError("CONFLICT", "A CSR with this email already exists");
   }
@@ -107,7 +112,7 @@ export async function inviteCsr(
     data: {
       name: input.name,
       surname: input.surname,
-      email: input.email,
+      email,
       displayName: input.displayName,
       status: CsrStatus.INVITED,
       inviteTokenHash: hashInviteToken(token),
@@ -137,7 +142,10 @@ export async function acceptInvite(input: { token?: string; email?: string; pass
   if (input.password.length < 8) {
     throw new CsrError("INVALID", "Password must be at least 8 characters");
   }
-  const email = input.email?.trim().toLowerCase() ?? "";
+  const suppliedEmail = input.email ?? "";
+  const parsedEmail = parseEmail(suppliedEmail);
+  if (suppliedEmail.trim() && "error" in parsedEmail) throw new CsrError("INVALID", parsedEmail.error);
+  const email = "value" in parsedEmail ? parsedEmail.value : "";
   const token = input.token?.trim() ?? "";
   const csr = token
     ? await prisma.csr.findUnique({ where: { inviteTokenHash: hashInviteToken(token) }, select: csrIdentitySelect })
@@ -274,6 +282,25 @@ export async function cancelInvite(actorId: string, csrId: string) {
   if (removed.count !== 1) {
     throw new CsrError("NOT_FOUND", "That invite is no longer open");
   }
+}
+
+export async function updateOwnName(actorId: string, input: { name: string; surname: string }) {
+  const actor = await prisma.csr.findUnique({ where: { id: actorId }, select: { id: true, status: true } });
+  if (!actor || actor.status !== CsrStatus.ACTIVE) {
+    throw new CsrError("UNAUTHENTICATED", "Sign in as an active CSR");
+  }
+  const parsed = parseOwnName(input);
+  if ("error" in parsed) throw new CsrError("INVALID", parsed.error);
+  const updated = await prisma.csr.update({
+    where: { id: actor.id },
+    data: {
+      name: parsed.value.name,
+      surname: parsed.value.surname,
+      displayName: parsed.value.displayName,
+    },
+    select: csrIdentitySelect,
+  });
+  return toPublicCsr(updated);
 }
 
 export async function updateCsrAccess(

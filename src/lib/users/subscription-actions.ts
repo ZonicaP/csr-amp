@@ -128,12 +128,14 @@ export async function runSubscriptionChange(actorId: string, membershipId: strin
       vehicleId: subscription.vehicle.id,
       vehicleLabel: vehicleLabel(subscription.vehicle),
       membershipId: customer.membershipId,
+      userId: customer.id,
     },
     destinationVehicleId: action.destinationVehicleId,
     destination: destination
       ? {
           vehicleLabel: vehicleLabel(destination),
           membershipId: destination.user.membershipId,
+          userId: destination.user.id,
           status: destination.user.status,
           hasSamePlan: destination.subscriptions.length > 0,
         }

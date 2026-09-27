@@ -10,16 +10,22 @@ import AuthLink from "@/components/auth/AuthLink";
 import PasswordField from "@/components/auth/PasswordField";
 import { postJson } from "@/lib/auth/http-client";
 import { useFormRequest } from "@/hooks/useFormRequest";
+import { parseEmail } from "@/lib/users/account-details";
 
 export default function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const router = useRouter();
-  const { error, pending, run } = useFormRequest();
+  const { error, setError, pending, run } = useFormRequest();
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const result = await run(() => postJson<{ csr: { emailVerified: boolean } }>("/api/auth/session", { email, password }));
+    const parsedEmail = parseEmail(email);
+    if ("error" in parsedEmail) {
+      setError("Email or password is incorrect");
+      return;
+    }
+    const result = await run(() => postJson<{ csr: { emailVerified: boolean } }>("/api/auth/session", { email: parsedEmail.value, password }));
     if (!result) {
       return;
     }
@@ -28,7 +34,7 @@ export default function LoginForm() {
   }
 
   return (
-    <Stack component="form" onSubmit={onSubmit} spacing={2}>
+    <Stack component="form" noValidate onSubmit={onSubmit} spacing={2}>
       {error ? <Alert severity="error">{error}</Alert> : null}
       <TextField
         label="Email"

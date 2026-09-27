@@ -7,12 +7,12 @@ import { customerNoticeFootnote, customerNoticeTo } from "@/lib/email/customer-r
 import { NoticeEmail } from "@/lib/email/notice-email";
 import type { SuggestedAction } from "@/lib/debug/account-issue";
 import { cancellationAllowed } from "@/lib/users/cancellation";
-import { parseOfferDiscount } from "@/lib/users/discount";
+import { discountPhrase, parseOfferDiscount, storedDiscount } from "@/lib/users/discount";
 
 async function customerFor(membershipId: string) {
   const customer = await prisma.user.findFirst({
     where: { membershipId: { equals: membershipId, mode: "insensitive" } },
-    select: { id: true, firstName: true, membershipId: true, status: true, email: true },
+    select: { id: true, firstName: true, membershipId: true, status: true, email: true, discountPercent: true, discountPeriod: true },
   });
   if (!customer) throw new CsrError("NOT_FOUND", "That customer could not be found");
   return customer;
@@ -37,7 +37,7 @@ async function paidPurchases(userId: string) {
 export async function runAccountAction(
   actorId: string,
   membershipId: string,
-  action: SuggestedAction,
+  action: SuggestedAction | { type: "remove-discount" },
   input: { reason?: string; percent?: unknown; period?: unknown } = {},
 ) {
   const actor = await currentCsr(actorId);
@@ -96,6 +96,8 @@ export async function runAccountAction(
     if (customer.status === "CANCELLED") throw new CsrError("CONFLICT", "This membership is already cancelled");
     const offer = parseOfferDiscount(input.percent, input.period, actor.roles);
     if ("error" in offer) throw new CsrError("INVALID", offer.error);
+    const current = storedDiscount(customer.discountPercent, customer.discountPeriod);
+    const phrase = discountPhrase(offer.percent, offer.label);
     await mail.send(
       to,
       new NoticeEmail(
@@ -109,16 +111,38 @@ export async function runAccountAction(
         footnote,
       ),
     );
-    await prisma.customerEvent.create({
-      data: {
-        userId: customer.id,
-        type: "ACCOUNT_UPDATED",
-        summary: `Discount offered: ${offer.percent}% off for ${offer.label}.`.slice(0, 500),
-        createdAt: new Date(),
-        ...link,
-      },
-    });
+    await prisma.$transaction([
+      prisma.user.update({ where: { id: customer.id }, data: { discountPercent: offer.percent, discountPeriod: offer.period } }),
+      prisma.customerEvent.create({
+        data: {
+          userId: customer.id,
+          type: "ACCOUNT_UPDATED",
+          summary: `${current ? "Discount updated" : "Discount offered"}: ${phrase}.`.slice(0, 500),
+          createdAt: new Date(),
+          ...link,
+        },
+      }),
+    ]);
     return { sampleAddress: recipient.sample };
+  }
+
+  if (action.type === "remove-discount") {
+    if (!hasPermission(actor.roles, "customers:read")) throw new CsrError("FORBIDDEN", "You do not have permission for this action");
+    const current = storedDiscount(customer.discountPercent, customer.discountPeriod);
+    if (!current) throw new CsrError("CONFLICT", "This membership has no discount");
+    await prisma.$transaction([
+      prisma.user.update({ where: { id: customer.id }, data: { discountPercent: null, discountPeriod: null } }),
+      prisma.customerEvent.create({
+        data: {
+          userId: customer.id,
+          type: "ACCOUNT_UPDATED",
+          summary: `Discount removed: was ${discountPhrase(current.percent, current.label)}.`.slice(0, 500),
+          createdAt: new Date(),
+          ...link,
+        },
+      }),
+    ]);
+    return { sampleAddress: false };
   }
 
   if (action.type === "email-plate-documents") {

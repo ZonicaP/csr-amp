@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { currentCsr, loginCsr } from "@/lib/csr/csr-service";
+import { CsrError, currentCsr, loginCsr } from "@/lib/csr/csr-service";
+import { parseEmail } from "@/lib/users/account-details";
 import { csrErrorResponse } from "@/lib/csr/http";
 import { authBlocked, clearAuthAttempts, recordAuthFailure } from "@/lib/csr/auth-limit";
 import { withApi } from "@/lib/http/with-api";
@@ -24,11 +25,16 @@ export const POST = withApi(async function POST(request: Request) {
     if (typeof body.email !== "string" || typeof body.password !== "string") {
       return NextResponse.json({ error: "Email and password are required" }, { status: 400 });
     }
-    const email = body.email.toLowerCase();
+    const parsedEmail = parseEmail(body.email);
+    const email = "value" in parsedEmail ? parsedEmail.value : body.email.trim().toLowerCase();
     const limited = await authBlocked(`login:${email}`, 8);
     if (!limited.ok) {
       const minutes = Math.max(1, Math.ceil(limited.retryAfter / 60));
       return NextResponse.json({ error: `Too many sign-in attempts. Try again in ${minutes} minute${minutes === 1 ? "" : "s"}.` }, { status: 429 });
+    }
+    if (!("value" in parsedEmail)) {
+      await recordAuthFailure(`login:${email}`);
+      throw new CsrError("UNAUTHENTICATED", "Email or password is incorrect");
     }
     try {
       const csr = await loginCsr(email, body.password);

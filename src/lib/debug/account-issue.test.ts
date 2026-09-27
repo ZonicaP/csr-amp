@@ -9,6 +9,7 @@ function customer(status: "ACTIVE" | "OVERDUE" | "CANCELLED") {
     firstName: "Amelia",
     lastName: "Keller",
     membershipId: "AMP-10041",
+    email: "amelia.keller@example.com",
     status,
     createdAt: opened,
     vehicles: [
@@ -232,6 +233,7 @@ describe("smart debug answers", () => {
         firstName: "Liam",
         lastName: "Brooks",
         membershipId: "AMP-10021",
+        email: "liam.brooks@example.com",
         status: "ACTIVE",
         createdAt: opened,
         vehicles: [],
@@ -287,6 +289,29 @@ describe("smart debug answers", () => {
     assert.match(none.likelyIssue, /No call is linked/);
     assert.match(`${none.summary} ${none.steps.join(" ")}`, /no reference/i);
     assert.match(none.steps.join(" "), /Do not invent/);
+  });
+
+  it("answers a missing-email complaint without treating it as off-topic", () => {
+    const answer = fallbackDebugAnswer(customer("ACTIVE"), "haven't been receiving emails");
+    const text = `${answer.likelyIssue} ${answer.summary} ${answer.steps.join(" ")}`;
+    assert.doesNotMatch(text, /only answers questions about this membership/i);
+    assert.match(text, /amelia\.keller@example\.com/);
+    assert.match(text, /signed-in CSR/);
+    assert.match(text, /@example\.com/);
+    assert.match(text, /payment link/i);
+    assert.match(text, /plate documents/i);
+    assert.match(text, /discount offer/i);
+    assert.match(text, /does not keep an inbox or a delivery log/i);
+    assert.match(text, /not emailed as a receipt/i);
+    assert.doesNotMatch(text, /delivered at|opened the email|inbox shows/i);
+    assert.ok(answer.steps.length >= 2 && answer.steps.length <= 4);
+
+    const receipt = fallbackDebugAnswer(customer("OVERDUE"), "didn't get the receipt");
+    const receiptText = `${receipt.summary} ${receipt.steps.join(" ")}`;
+    assert.match(receiptText, /amelia\.keller@example\.com/);
+    assert.match(receiptText, /not emailed as a receipt/i);
+    assert.match(receiptText, /A wash can start after that/);
+    assert.doesNotMatch(receiptText, /only answers questions about this membership/i);
   });
 
   it("explains a new vehicle and one active plan", () => {

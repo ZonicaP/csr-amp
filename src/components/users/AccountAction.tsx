@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Button from "@mui/material/Button";
+import { useCallEditGuard } from "@/components/calls/CallEditGuard";
 import CancelMembershipDialog from "@/components/users/CancelMembershipDialog";
 import OfferDiscountDialog from "@/components/users/OfferDiscountDialog";
 import { useCustomerNav } from "@/components/users/CustomerNavProvider";
@@ -39,6 +40,7 @@ export default function AccountAction({
   maxDiscount?: number | null;
 }) {
   const router = useRouter();
+  const guardEdit = useCallEditGuard();
   const nav = useCustomerNav();
   const customerName = nav?.membershipId === membershipId ? nav.name : null;
   const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
@@ -71,23 +73,27 @@ export default function AccountAction({
   }
 
   function openCancel(event: React.MouseEvent) {
-    onActivate?.();
     event.stopPropagation();
-    setMessage(null);
-    setState("idle");
-    setDialogKey((value) => value + 1);
-    setCancelOpen(true);
-    onCover?.();
+    onActivate?.();
+    guardEdit(() => {
+      setMessage(null);
+      setState("idle");
+      setDialogKey((value) => value + 1);
+      setCancelOpen(true);
+      onCover?.();
+    });
   }
 
   function openOffer(event: React.MouseEvent) {
-    onActivate?.();
     event.stopPropagation();
-    setMessage(null);
-    setState("idle");
-    setDialogKey((value) => value + 1);
-    setOfferOpen(true);
-    onCover?.();
+    onActivate?.();
+    guardEdit(() => {
+      setMessage(null);
+      setState("idle");
+      setDialogKey((value) => value + 1);
+      setOfferOpen(true);
+      onCover?.();
+    });
   }
 
   function reveal() {
@@ -103,13 +109,14 @@ export default function AccountAction({
     onDone?.();
   }
 
-  const label = state === "sent" ? "Done" : state === "sending" ? "Sending" : state === "error" ? "Try again" : labels[action.type];
+  const keepsActionLabel = action.type === "offer-discount" || action.type === "email-plate-documents";
+  const label = state === "sent" && !keepsActionLabel ? "Done" : state === "sending" ? "Sending" : state === "error" ? "Try again" : labels[action.type];
 
   return (
     <>
       <Button
         variant={appearance === "button" ? "outlined" : "text"}
-        onClick={action.type === "cancel-membership" ? openCancel : action.type === "offer-discount" ? openOffer : (event) => { event.stopPropagation(); void run(); }}
+        onClick={action.type === "cancel-membership" ? openCancel : action.type === "offer-discount" ? openOffer : (event) => { event.stopPropagation(); onActivate?.(); guardEdit(() => { void run(); }); }}
         disabled={state === "sending" || (state === "sent" && action.type !== "cancel-membership")}
         sx={
           appearance === "button"

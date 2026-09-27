@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Button from "@mui/material/Button";
-import Dialog from "@mui/material/Dialog";
+import Dialog from "@/components/Dialog";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import MenuItem from "@mui/material/MenuItem";

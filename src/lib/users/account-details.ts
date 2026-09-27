@@ -7,17 +7,29 @@ export type AccountDetails = {
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+export function parseEmail(input: string): { value: string } | { error: string } {
+  const email = input.trim().toLowerCase();
+  if (email.length > 254 || !emailPattern.test(email)) return { error: "Enter a valid email" };
+  return { value: email };
+}
+
+export function parsePhone(input: string): { value: string | null } | { error: string } {
+  const phone = input.trim();
+  const digits = phone.replace(/\D/g, "");
+  if (phone && (digits.length < 7 || digits.length > 15)) return { error: "Enter a phone number with 7 to 15 digits" };
+  return { value: phone || null };
+}
+
 export function parseAccountDetails(input: { firstName: string; lastName: string; email: string; phone: string }): { value: AccountDetails } | { error: string } {
   const firstName = input.firstName.trim();
   const lastName = input.lastName.trim();
-  const email = input.email.trim().toLowerCase();
-  const phone = input.phone.trim();
   if (firstName.length < 1 || firstName.length > 80 || /[\r\n]/.test(firstName)) return { error: "Enter a first name" };
   if (lastName.length < 1 || lastName.length > 80 || /[\r\n]/.test(lastName)) return { error: "Enter a last name" };
-  if (email.length > 254 || !emailPattern.test(email)) return { error: "Enter a valid email" };
-  const digits = phone.replace(/\D/g, "");
-  if (phone && (digits.length < 7 || digits.length > 15)) return { error: "Enter a phone number with 7 to 15 digits" };
-  return { value: { firstName, lastName, email, phone: phone || null } };
+  const email = parseEmail(input.email);
+  if ("error" in email) return email;
+  const phone = parsePhone(input.phone);
+  if ("error" in phone) return phone;
+  return { value: { firstName, lastName, email: email.value, phone: phone.value } };
 }
 
 export function accountDetailChanges(current: AccountDetails, next: AccountDetails) {

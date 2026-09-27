@@ -20,6 +20,10 @@ export const POST = withApi(async function POST(request: Request, { params }: { 
     if (!session) return NextResponse.json({ error: "Sign in as an active CSR" }, { status: 401 });
     const { membershipId } = await params;
     const body = (await request.json()) as Record<string, unknown>;
+    if (body.type === "remove-discount") {
+      const result = await runAccountAction(session.csrId, membershipId, { type: "remove-discount" });
+      return NextResponse.json({ ok: true, sampleAddress: result.sampleAddress });
+    }
     const action = actionFrom(body);
     const reason = typeof body.reason === "string" ? body.reason : "";
     if (!action || action.type === "email-payment-link") return NextResponse.json({ error: "That action is not available" }, { status: 400 });

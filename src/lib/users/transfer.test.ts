@@ -8,14 +8,15 @@ const plan = {
   vehicleId: "car-1",
   vehicleLabel: "2022 Tesla Model 3 (KBA9205)",
   membershipId: "AMP-10033",
+  userId: "ethan",
 };
 
-test("a plan moves to another vehicle", () => {
+test("a plan moves to another vehicle on the same membership", () => {
   assert.deepEqual(
     transferPlan({
       plan,
       destinationVehicleId: "car-2",
-      destination: { vehicleLabel: "2024 Subaru Outback (PFA2357)", membershipId: "AMP-10033", status: "ACTIVE", hasSamePlan: false },
+      destination: { vehicleLabel: "2024 Subaru Outback (PFA2357)", membershipId: "AMP-10033", userId: "ethan", status: "ACTIVE", hasSamePlan: false },
     }),
     { ok: true, summary: "The Works moved from 2022 Tesla Model 3 (KBA9205) on AMP-10033 to 2024 Subaru Outback (PFA2357) on AMP-10033." },
   );
@@ -30,7 +31,15 @@ test("a transfer stays on an active plan and a different vehicle", () => {
     transferPlan({
       plan,
       destinationVehicleId: "car-2",
-      destination: { vehicleLabel: "Other", membershipId: "AMP-10002", status: "CANCELLED", hasSamePlan: false },
+      destination: { vehicleLabel: "Other", membershipId: "AMP-10002", userId: "someone-else", status: "ACTIVE", hasSamePlan: false },
+    }),
+    { ok: false, code: "INVALID", error: "A plan can only move to another vehicle on this membership" },
+  );
+  assert.deepEqual(
+    transferPlan({
+      plan,
+      destinationVehicleId: "car-2",
+      destination: { vehicleLabel: "Other", membershipId: "AMP-10033", userId: "ethan", status: "CANCELLED", hasSamePlan: false },
     }),
     { ok: false, code: "CONFLICT", error: "That membership is cancelled" },
   );
@@ -38,7 +47,7 @@ test("a transfer stays on an active plan and a different vehicle", () => {
     transferPlan({
       plan,
       destinationVehicleId: "car-2",
-      destination: { vehicleLabel: "Other", membershipId: "AMP-10002", status: "OVERDUE", hasSamePlan: true },
+      destination: { vehicleLabel: "Other", membershipId: "AMP-10033", userId: "ethan", status: "OVERDUE", hasSamePlan: true },
     }),
     { ok: false, code: "CONFLICT", error: "That vehicle already has this plan" },
   );

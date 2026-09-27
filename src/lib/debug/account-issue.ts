@@ -1,3 +1,5 @@
+import { customerNoticeTo } from "../email/customer-recipient.ts";
+
 const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 const date = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" });
 
@@ -32,6 +34,7 @@ export type AccountCall = {
 export type AccountSnapshot = {
   name: string;
   membershipId: string;
+  email: string;
   status: AccountStatus;
   joined: string;
   vehicles: { id: string; name: string; plate: string | null; plans: { name: string; status: string; since: string }[] }[];
@@ -44,6 +47,7 @@ type AccountRecord = {
   firstName: string;
   lastName: string;
   membershipId: string;
+  email: string;
   status: AccountStatus;
   createdAt: Date;
   vehicles: {
@@ -88,6 +92,7 @@ export function accountSnapshot(customer: AccountRecord, calls: CallContext[] = 
   return {
     name: `${customer.firstName} ${customer.lastName}`,
     membershipId: customer.membershipId,
+    email: customer.email,
     status: customer.status,
     joined: date.format(customer.createdAt),
     vehicles: customer.vehicles.map((vehicle) => ({
@@ -223,10 +228,12 @@ export type DebugReply = {
 const couponPattern = /coupon|promo code|\bpromo\b/;
 const singleWashPattern = /single wash|one-time wash|one time wash/;
 const cardPattern = /update( my| the| their)? card|change( my| the| their)? card|new card|card (was |is |got )?declin|card expir/;
+const mailPattern =
+  /\b(e-?mails?|receipts?)\b|payment link\b.{0,40}\b(never arrived|not arrived|did not arrive|didn't arrive|missing|not received)|plate email|discount email|membership email/;
 
 export function answersWithoutModel(question: string) {
   const text = question.toLowerCase();
-  return couponPattern.test(text) || singleWashPattern.test(text) || cardPattern.test(text);
+  return couponPattern.test(text) || singleWashPattern.test(text) || cardPattern.test(text) || mailPattern.test(text);
 }
 
 function planNames(account: AccountSnapshot) {
@@ -542,8 +549,35 @@ function billingAnswer(account: AccountSnapshot): DebugReply {
   ]);
 }
 
+function mailAnswer(account: AccountSnapshot): DebugReply {
+  const email = account.email.trim();
+  const sample = email.length > 0 && customerNoticeTo(email, "csr").sample;
+  const route = !email
+    ? "No email address is on this account, so a notice has nowhere to go until one is saved on Info."
+    : sample
+      ? `${email} is an @example.com test address, so membership emails are sent to the signed-in CSR instead of the member.`
+      : `Membership emails go to ${email}. That address is not an @example.com test address, so they are not redirected to the CSR.`;
+  const overdue =
+    account.status === "OVERDUE"
+      ? " The account is also overdue. The membership stays overdue until the payment link is paid. A wash can start after that."
+      : "";
+  return reply(
+    "Check the address these membership emails use.",
+    `This portal does not keep an inbox or a delivery log, so a missing message cannot be confirmed from here. ${route}${overdue}`,
+    [
+      email ? `Confirm ${email} on the Info page with the customer. Correct it there if it is wrong.` : "Add the customer's email on the Info page before sending another notice.",
+      sample
+        ? "Ask the signed-in CSR to check their own mail. Sample @example.com addresses are routed there."
+        : "Messages are addressed to the email on the account. This portal cannot show whether one arrived.",
+      "Mail from this portal is a payment link for a failed charge, plate documents, a discount offer, a cancellation notice, a refund request, an account-details update, and a plan change. A successful payment is not emailed as a receipt. It stays on the Payments page.",
+      "The account log records that a CSR took an action. It does not show that the message arrived.",
+    ],
+  );
+}
+
 export function fallbackDebugAnswer(account: AccountSnapshot, question: string): DebugReply {
   const text = question.toLowerCase();
+  if (mailPattern.test(text)) return mailAnswer(account);
   if (couponPattern.test(text)) return couponAnswer(account, text);
   if (singleWashPattern.test(text)) return singleWashAnswer(account);
   if (cardPattern.test(text)) return cardAnswer(account);

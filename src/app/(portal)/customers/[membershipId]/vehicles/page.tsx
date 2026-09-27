@@ -76,6 +76,12 @@ export default async function CustomerVehiclesPage({ params }: { params: Promise
                   status: subscription.status,
                   since: date.format(subscription.startedAt),
                 }))}
+                otherVehicles={customer.vehicles
+                  .filter((item) => item.id !== vehicle.id)
+                  .map((item) => {
+                    const name = [item.year, item.make, item.model].filter(Boolean).join(" ") || "Vehicle";
+                    return { id: item.id, label: item.licensePlate ? `${name} (${item.licensePlate})` : name };
+                  })}
                 canAdd={hasPermission(csr.roles, "customers:update") && customer.status !== "CANCELLED"}
                 canRemove={hasPermission(csr.roles, "subscriptions:cancel")}
                 canTransfer={hasPermission(csr.roles, "subscriptions:transfer")}

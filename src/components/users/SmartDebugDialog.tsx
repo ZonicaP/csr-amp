@@ -1,12 +1,14 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import Chip from "@mui/material/Chip";
-import Dialog from "@mui/material/Dialog";
+import Dialog from "@/components/Dialog";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import Stack from "@mui/material/Stack";
+import Tab from "@mui/material/Tab";
+import Tabs from "@mui/material/Tabs";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import DialogCloseButton, { dialogFooterButton } from "@/components/DialogCloseButton";
@@ -14,19 +16,13 @@ import { sheetDialogSx } from "@/components/sheetDialog";
 import LikelyIssue from "@/components/users/LikelyIssue";
 import type { AccountIssue, SuggestedAction } from "@/lib/debug/account-issue";
 
-const frequentIssues = [
-  "Payment was declined",
-  "Wash didn't start",
-  "Charged twice",
-  "Wants to cancel",
-  "Wrong plate or vehicle",
-  "Plan looks wrong",
-  "Coupon doesn't work",
-  "Coupon expired",
-  "Single wash",
-  "Update my card",
-  "Previous calls",
-];
+const issueGroups = [
+  { id: "payment", label: "Payment", issues: ["Payment was declined", "Charged twice", "Update my card"] },
+  { id: "wash", label: "Wash", issues: ["Wash didn't start", "Single wash", "Coupon doesn't work", "Coupon expired"] },
+  { id: "account", label: "Account", issues: ["Wants to cancel", "Wrong plate or vehicle", "Plan looks wrong", "Previous calls"] },
+] as const;
+
+type IssueGroup = (typeof issueGroups)[number]["id"];
 
 export type DebugAnswer = {
   likelyIssue: string;
@@ -79,6 +75,9 @@ export default function SmartDebugDialog({
   actionKey: (action: SuggestedAction) => string;
   renderAction: (action: SuggestedAction) => ReactNode;
 }) {
+  const [group, setGroup] = useState<IssueGroup>("payment");
+  const issues = issueGroups.find((item) => item.id === group)?.issues ?? issueGroups[0].issues;
+
   return (
     <Dialog
       open={open}
@@ -115,25 +114,59 @@ export default function SmartDebugDialog({
                 maxRows={4}
                 fullWidth
               />
-              <Stack direction="row" sx={{ flexWrap: "wrap", gap: 1 }}>
-                {frequentIssues.map((label) => {
-                  const active = selected === label;
-                  return (
-                    <Chip
-                      key={label}
-                      label={label}
-                      variant="outlined"
-                      onClick={() => onSelect(label)}
-                      sx={{
-                        borderColor: active ? "#0B75E1" : "#E5E7EB",
-                        backgroundColor: active ? "rgba(11, 117, 225, 0.08)" : "#FFFFFF",
-                        color: active ? "#003264" : "#181D27",
-                        fontWeight: 600,
-                      }}
-                    />
-                  );
-                })}
-              </Stack>
+              <Box>
+                <Typography sx={{ color: "#717680", fontSize: 12, fontWeight: 700, letterSpacing: "0.04em", mb: 0.5 }}>
+                  COMMON ISSUES
+                </Typography>
+                <Tabs
+                  value={group}
+                  onChange={(_event, next: IssueGroup) => setGroup(next)}
+                  variant="fullWidth"
+                  sx={{
+                    minHeight: 40,
+                    borderBottom: "1px solid #E5E7EB",
+                    "& .MuiTab-root": { minHeight: 40, textTransform: "none", fontWeight: 600, fontSize: 14, color: "#717680" },
+                    "& .Mui-selected": { color: "#0B75E1" },
+                    "& .MuiTabs-indicator": { backgroundColor: "#0B75E1" },
+                  }}
+                >
+                  {issueGroups.map((item) => (
+                    <Tab key={item.id} value={item.id} label={item.label} />
+                  ))}
+                </Tabs>
+                <Stack role="listbox" aria-label="Common issues" spacing={0.25} sx={{ pt: 0.75 }}>
+                  {issues.map((label) => {
+                    const active = selected === label;
+                    return (
+                      <Box
+                        key={label}
+                        component="button"
+                        type="button"
+                        role="option"
+                        aria-selected={active}
+                        onClick={() => onSelect(label)}
+                        sx={{
+                          minHeight: 36,
+                          px: 1.5,
+                          py: 0.75,
+                          border: 0,
+                          borderRadius: "12px",
+                          backgroundColor: active ? "rgba(11, 117, 225, 0.1)" : "transparent",
+                          color: active ? "#0B75E1" : "#003264",
+                          font: "inherit",
+                          fontWeight: 600,
+                          fontSize: 14,
+                          textAlign: "left",
+                          cursor: "pointer",
+                          "&:hover": { backgroundColor: active ? "rgba(11, 117, 225, 0.1)" : "rgba(11, 117, 225, 0.08)" },
+                        }}
+                      >
+                        {label}
+                      </Box>
+                    );
+                  })}
+                </Stack>
+              </Box>
               <Button
                 variant="contained"
                 onClick={onAsk}

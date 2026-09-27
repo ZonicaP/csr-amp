@@ -5,7 +5,9 @@ import StatusBadge from "@/components/StatusBadge";
 import Typography from "@mui/material/Typography";
 import AccountAction from "@/components/users/AccountAction";
 import EditAccount from "@/components/users/EditAccount";
+import MembershipDiscount from "@/components/users/MembershipDiscount";
 import { hasPermission } from "@/lib/csr/permissions";
+import { maxDiscountPercent, storedDiscount } from "@/lib/users/discount";
 import { loadCustomerPage } from "@/lib/users/load-customer-page";
 
 const date = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" });
@@ -23,6 +25,7 @@ export default async function CustomerInfoPage({ params }: { params: Promise<{ m
 
   const canUpdate = hasPermission(csr.roles, "customers:update");
   const canCancel = hasPermission(csr.roles, "subscriptions:cancel");
+  const discount = storedDiscount(customer.discountPercent, customer.discountPeriod);
 
   return (
     <Stack spacing={1.5}>
@@ -36,6 +39,14 @@ export default async function CustomerInfoPage({ params }: { params: Promise<{ m
             <StatusBadge status={customer.status} />
           </Stack>
           <Typography sx={{ color: "#717680", fontSize: 14 }}>Joined {date.format(customer.createdAt)}</Typography>
+          {discount ? (
+            <MembershipDiscount
+              membershipId={customer.membershipId}
+              percent={discount.percent}
+              period={discount.period}
+              maxDiscount={maxDiscountPercent(csr.roles)}
+            />
+          ) : null}
           {customer.status === "CANCELLED" && canUpdate ? (
             <AccountAction membershipId={customer.membershipId} action={{ type: "reactivate-membership" }} appearance="button" />
           ) : null}

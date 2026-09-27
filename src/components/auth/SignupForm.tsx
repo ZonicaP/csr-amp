@@ -10,6 +10,7 @@ import AuthLink from "@/components/auth/AuthLink";
 import PasswordField from "@/components/auth/PasswordField";
 import { postJson } from "@/lib/auth/http-client";
 import { useFormRequest } from "@/hooks/useFormRequest";
+import { parseEmail } from "@/lib/users/account-details";
 
 export default function SignupForm({ token, email, linkExpired }: { token: string; email: string; linkExpired: boolean }) {
   const [address, setAddress] = useState(email);
@@ -19,13 +20,19 @@ export default function SignupForm({ token, email, linkExpired }: { token: strin
   const [emailSent, setEmailSent] = useState(true);
   const { error, setError, pending, run } = useFormRequest();
 
+  const parsedEmail = parseEmail(address);
+
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if ("error" in parsedEmail) {
+      setError(parsedEmail.error);
+      return;
+    }
     if (password !== confirm) {
       setError("Passwords do not match");
       return;
     }
-    const result = await run(() => postJson<{ emailSent: boolean }>("/api/invites/accept", { token, email: address, password }));
+    const result = await run(() => postJson<{ emailSent: boolean }>("/api/invites/accept", { token, email: parsedEmail.value, password }));
     if (result) {
       setEmailSent(result.emailSent);
       setDone(true);
@@ -48,7 +55,7 @@ export default function SignupForm({ token, email, linkExpired }: { token: strin
   }
 
   return (
-    <Stack component="form" onSubmit={onSubmit} spacing={2}>
+    <Stack component="form" noValidate onSubmit={onSubmit} spacing={2}>
       {linkExpired ? <Alert severity="info">This invite link is no longer valid. Enter the invited email to create the account.</Alert> : null}
       {error ? <Alert severity="error">{error}</Alert> : null}
       <TextField
@@ -60,6 +67,8 @@ export default function SignupForm({ token, email, linkExpired }: { token: strin
         onChange={(event) => setAddress(event.target.value)}
         disabled={Boolean(email)}
         required
+        error={"error" in parsedEmail && address.trim().length > 0}
+        helperText={"error" in parsedEmail && address.trim().length > 0 ? parsedEmail.error : undefined}
       />
       <PasswordField
         label="Password"

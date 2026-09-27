@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
+import CallEditGuard from "@/components/calls/CallEditGuard";
 import CallerLink from "@/components/calls/CallerLink";
 import AccountMenu from "@/components/users/AccountMenu";
 import AddVehicle from "@/components/users/AddVehicle";
@@ -64,6 +65,7 @@ export default function CustomerChrome({
   const pageTitle = tabs.find((tab) => tab.match)?.label ?? "Info";
 
   return (
+    <CallEditGuard membershipId={membershipId} call={call ?? null}>
     <Box
       component="main"
       id="main"
@@ -130,6 +132,7 @@ export default function CustomerChrome({
         {children}
       </Stack>
     </Box>
+    </CallEditGuard>
   );
 }
 
