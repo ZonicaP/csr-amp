@@ -248,7 +248,6 @@ describe("smart debug answers", () => {
           endedAt: new Date(Date.UTC(2026, 8, 25, 21, 30)),
           closingNotes: "Caller confirmed the reactivation.",
           callbackNote: null,
-          escalatedAt: null,
           csr: { displayName: "Zonica Pietersen" },
         },
         {
@@ -258,14 +257,12 @@ describe("smart debug answers", () => {
           endedAt: null,
           closingNotes: null,
           callbackNote: "Ask about the membership fee.",
-          escalatedAt: new Date(Date.UTC(2026, 8, 20, 15, 5)),
           csr: { displayName: "Zonica Pietersen" },
         },
       ],
     );
     assert.equal(account.logs[0]?.call, "C-74779");
     assert.equal(account.calls[1]?.status, "Callback");
-    assert.equal(account.calls[1]?.escalated, true);
     assert.equal(account.calls[1]?.callbackNote, "Ask about the membership fee.");
 
     const answer = fallbackDebugAnswer(account, "previous calls");
@@ -279,7 +276,6 @@ describe("smart debug answers", () => {
     const callback = fallbackDebugAnswer(account, "is there a callback");
     assert.match(callback.likelyIssue, /C-90785/);
     assert.match(callback.summary, /Ask about the membership fee/);
-    assert.match(callback.summary, /escalated/i);
 
     const missing = fallbackDebugAnswer(account, "what about C-11111");
     assert.match(missing.likelyIssue, /not linked/);

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { handoffAllowed } from "./handoff.ts";
+import { handoffAllowed, handoffPatch } from "./handoff.ts";
 
 const actorId = "csr-1";
 
@@ -32,4 +32,13 @@ test("handoff rejects the same CSR, an inactive CSR, and a CSR already on a call
     code: "CONFLICT",
     error: "That CSR already has an open call",
   });
+});
+
+test("handoff gives the same open call to the receiver", () => {
+  const patch = handoffPatch("csr-2");
+  assert.deepEqual(patch, { csrId: "csr-2" });
+  assert.equal("status" in patch, false);
+  assert.equal("reference" in patch, false);
+  assert.equal("userId" in patch, false);
+  assert.equal("escalatedAt" in patch, false);
 });

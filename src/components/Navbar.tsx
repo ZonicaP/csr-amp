@@ -24,7 +24,7 @@ function ProfileIcon() {
   );
 }
 
-export default function Navbar({ name, call, canEscalate = false }: { name: string; call: OpenCall | null; canEscalate?: boolean }) {
+export default function Navbar({ name, call }: { name: string; call: OpenCall | null }) {
   const pathname = usePathname();
   const customer = useCustomerNav();
   const onCustomer = /^\/customers\/[^/]+/.test(pathname);
@@ -91,7 +91,7 @@ export default function Navbar({ name, call, canEscalate = false }: { name: stri
       >
         {onCustomer ? customer?.name : null}
       </Box>
-      <CallControls call={call} canEscalate={canEscalate} />
+      <CallControls call={call} />
       {hideProfile ? null : (
         <Box
           component={NextLink}

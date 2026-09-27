@@ -43,14 +43,40 @@
 - The most likely bar was too much on every tab, so it stays on Info only, where the agent lands.
 - Plate documents are one email for the whole account. Repeating that action on every vehicle dialog cluttered the menu.
 - A membership can hold several vehicles. One active plan per vehicle, and adding a plan replaces the current one. The vehicle card opens its own details. Adding a vehicle is a separate action: a year list, then make and model suggestions. Those suggestions come from NHTSA, but only cars, trucks, and SUVs. The full manufacturer list was full of trailer companies and other names a CSR would never pick. A make that is not listed can still be typed.
-- Calls are part of the job, not a side note. Start and end sit in the header, top right on desktop. Ending a call asks the CSR to confirm they gave the reference and that the caller had nothing else, with one optional note. Call back uses that same note. Only an agent can escalate, and that becomes a callback assigned to an admin.
+- Calls are part of the job, not a side note. Start and end sit in the header, top right on desktop. Ending a call asks the CSR to confirm they gave the reference and that the caller had nothing else, with one optional note. Call back uses that same note. Transfer hands the open call to another CSR and keeps the same reference. The other CSR needs a free line.
 - Call search works the same way as customer search: type, and the list filters, including a callbacks-only view. A callback can be marked as called from the call itself.
 - Linking the caller should not interrupt the CSR, and it should not happen just because a customer page was open when the call ended. While a call is open, the customer page has one quiet row, This is the caller. Undo clears a wrong link. Opening another customer shows who is already linked and can switch with the same button. Membership changes are not blocked when no call is open. If a call is open and the caller was confirmed, the change stays on that call.
 - Home and profile are the same page. The AMP logo goes there.
 - Cancelling needs a confirmation that names the customer, plus a reason. The common reasons are a dropdown. Other asks for a note. A stray click should not cancel a membership.
 - Coupons, a single wash, and changing the card belong to the AMP app. Smart debug still has to answer those questions from what is actually on the account, and it has to see previous calls. It must not invent a coupon code or an expiry date. If a charge failed, the CSR action here is to email a payment link.
 - The portal is private. Customer pages should not be indexed. API routes require a signed-in CSR, and lookups that can be abused stay rate limited. The count is a row in Postgres, so a restart or a second server instance still shares the same window.
-- Supervisor was dropped so the roles stay narrow. An agent can do every customer action, including cancel, transfer, and overdue, and can offer up to 10%. An admin can do the same with no discount cap, and is the only role that can invite, change a role, or disable a CSR. A call escalation goes to an admin. Existing supervisor accounts become agents.
+- Supervisor was dropped so the roles stay narrow. An agent can do every customer action, including cancel, transfer, and overdue, and can offer up to 10%. An admin can do the same with no discount cap, and is the only role that can invite, change a role, or disable a CSR. Existing supervisor accounts become agents.
+
+## Shipped on main
+
+- Paying `/pay/AMP-#####` records the charge and sets an overdue membership to active, so a wash can start. The customer does not enter a card number.
+
+## Local, not committed
+
+- An invited email can create an account from `/signup` without the invite link. The link still fills in that email and locks the field. An email that was never invited is rejected.
+- On Team, an invited member can resend the invite. Cancel invite opens as a bottom sheet on a phone.
+- Starting a call anywhere other than a customer page goes to `/customers`. An open call that is not linked shows a dismissible banner there. Starting a call on a customer page stays on that page. Opening a customer row does not link the call.
+- Ending a call, or requesting a call back, opens that call at `/calls/C-#####`. Close dismisses the dialog and leaves the call open. Transfer keeps the call open and stays on the current page.
+- The call dialog tabs are End, Transfer, and Callback. Close dismisses the dialog and does not end the call.
+- Browser Back closes the top dialog and stays on the page. Another Back leaves the page only when no dialog is open.
+- Editing a customer while this CSR has an unlinked open call warns “Call not linked”, offers This is the caller, and Close continues the edit. A call already linked to someone else warns “Call already linked” and leaves that link where it is.
+- A wash plan transfers only to another vehicle on the same membership. The server rejects a different member.
+- Plan info on the Plan tab is read-only. Pause, resume, upgrade, downgrade, and a savings figure stay on the AMP app. There is no mock savings number.
+- A current discount is stored on the membership and shown on the Info page, with Update discount and Remove discount. An agent’s cap remains 10%.
+- Email plate documents and Offer discounted membership keep those labels after they succeed.
+- The profile icon is hidden on customer pages, and on the mobile navbar while a call is open. A CSR can edit their own first name and surname only.
+- An email needs one `@` and a dot in the domain. A blank phone may clear the number. Any other phone needs 10 to 15 digits.
+- Smart debug common issues are grouped under Payment, Wash, and Account. “Haven't been receiving emails” is answered as a question about this membership. The most likely bar on Info still carries the one standing action for that account.
+- A cancelled membership on the public pay page says “This membership has been cancelled.” and has no Pay button. A membership that is not cancelled, and has nothing due, says “Nothing is due on this membership.”
+- Google sign-in stays out. Web push stays out.
+- A call transferred to the signed-in CSR shows a dismissible notice, “{reference} was transferred to you.” Open call goes to the linked customer, or to `/customers` when the call is not linked. Dismiss hides that notice for the current load and does not end the call. A call this CSR started does not show the notice. The shell refreshes while the page is visible so the receiver can see the call.
+- Vehicles are stored in this app’s Postgres. Year, make, and model suggestions use NHTSA vPIC through `/api/vehicles/catalog`.
+- Smart debug uses Groq `openai/gpt-oss-120b`, hardcoded. `GROQ_API_KEY` is the credential only.
 
 ## Core expectations
 

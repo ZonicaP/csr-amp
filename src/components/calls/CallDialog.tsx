@@ -27,9 +27,8 @@ type CurrentCallResult = { call?: { status?: string } };
 const footerButton = { ...dialogFooterButton, "&&": { minHeight: 36, py: "6px", px: 2, fontSize: 14 } };
 const noteLimit = 1000;
 
-type Admin = { id: string; displayName: string };
 type Colleague = { id: string; displayName: string; available: boolean };
-type CallTab = "end" | "transfer" | "escalate" | "callback";
+type CallTab = "end" | "transfer" | "callback";
 
 function tabPanel(active: boolean) {
   return {
@@ -66,24 +65,19 @@ function NoteField({
 export default function CallDialog({
   open,
   reference,
-  canEscalate,
   onClose,
 }: {
   open: boolean;
   reference: string;
-  canEscalate: boolean;
   onClose: () => void;
 }) {
   const router = useRouter();
   const [tab, setTab] = useState<CallTab>("end");
-  const [pending, setPending] = useState<"end" | "callback" | "escalate" | "transfer" | null>(null);
+  const [pending, setPending] = useState<"end" | "callback" | "transfer" | null>(null);
   const [gaveReference, setGaveReference] = useState(false);
   const [confirmedNothingElse, setConfirmedNothingElse] = useState(false);
   const [notes, setNotes] = useState("");
   const [notesError, setNotesError] = useState<string | null>(null);
-  const [adminId, setAdminId] = useState("");
-  const [admins, setAdmins] = useState<Admin[]>([]);
-  const [adminError, setAdminError] = useState<string | null>(null);
   const [csrId, setCsrId] = useState("");
   const [colleagues, setColleagues] = useState<Colleague[]>([]);
   const [csrError, setCsrError] = useState<string | null>(null);
@@ -96,45 +90,33 @@ export default function CallDialog({
     setConfirmedNothingElse(false);
     setNotes("");
     setNotesError(null);
-    setAdminId("");
-    setAdmins([]);
-    setAdminError(null);
     setCsrId("");
     setColleagues([]);
     setCsrError(null);
     setDialogError(null);
     let ignore = false;
-    const colleaguesRequest = fetch("/api/calls/colleagues").then(async (response) => {
-      const data = (await response.json()) as { colleagues?: Colleague[]; error?: string };
-      if (!response.ok) throw new AuthRequestError(data.error ?? "CSRs could not be loaded");
-      return data.colleagues ?? [];
-    });
-    const adminsRequest = canEscalate
-      ? fetch("/api/calls/admins").then(async (response) => {
-          const data = (await response.json()) as { admins?: Admin[]; error?: string };
-          if (!response.ok) throw new AuthRequestError(data.error ?? "Admins could not be loaded");
-          return data.admins ?? [];
-        })
-      : Promise.resolve([] as Admin[]);
-    Promise.all([colleaguesRequest, adminsRequest])
-      .then(([nextColleagues, nextAdmins]) => {
+    fetch("/api/calls/colleagues")
+      .then(async (response) => {
+        const data = (await response.json()) as { colleagues?: Colleague[]; error?: string };
+        if (!response.ok) throw new AuthRequestError(data.error ?? "CSRs could not be loaded");
+        return data.colleagues ?? [];
+      })
+      .then((nextColleagues) => {
         if (ignore) return;
         setColleagues(nextColleagues);
-        setAdmins(nextAdmins);
       })
       .catch((caught: unknown) => {
         if (ignore) return;
         setColleagues([]);
-        setAdmins([]);
         setDialogError(caught instanceof AuthRequestError ? caught.message : "CSRs could not be loaded");
       });
     return () => {
       ignore = true;
     };
-  }, [open, reference, canEscalate]);
+  }, [open, reference]);
 
   function finish(status?: string) {
-    const next = routeAfterCallAction(window.location.pathname, status);
+    const next = routeAfterCallAction(status, reference);
     onClose();
     if (!next) {
       router.refresh();
@@ -221,25 +203,6 @@ export default function CallDialog({
     }
   }
 
-  async function submitEscalate() {
-    const missingNote = notes.trim().length === 0;
-    const missingAdmin = admins.length === 0 || adminId.length === 0;
-    if (missingNote) setNotesError("Add a note before escalating the call");
-    if (admins.length === 0) setAdminError("No admin is available");
-    else if (adminId.length === 0) setAdminError("Choose an active admin");
-    if (missingNote || missingAdmin) return;
-    setPending("escalate");
-    setDialogError(null);
-    try {
-      const result = await postJson<CurrentCallResult>("/api/calls/current", { action: "escalate", adminId, note: notes });
-      finish(result.call?.status);
-    } catch (caught) {
-      setDialogError(caught instanceof AuthRequestError ? caught.message : "That call could not be escalated");
-    } finally {
-      setPending(null);
-    }
-  }
-
   return (
     <Dialog open={open} onClose={dismiss} fullWidth maxWidth="sm" sx={sheetDialogSx()}>
       <DialogTitle sx={{ color: "#003264", pb: 0 }}>Call</DialogTitle>
@@ -258,7 +221,6 @@ export default function CallDialog({
       >
         <Tab value="end" label="End" />
         <Tab value="transfer" label="Transfer" />
-        {canEscalate ? <Tab value="escalate" label="Escalate" /> : null}
         <Tab value="callback" label="Callback" />
       </Tabs>
       <DialogContent sx={{ "&&": { pt: 2.5 } }}>
@@ -300,7 +262,7 @@ export default function CallDialog({
                     setCsrError(null);
                   }}
                   error={csrError !== null}
-                  helperText={csrError ?? "They keep this reference, and the call stays open. Ask them to refresh."}
+                  helperText={csrError ?? "They keep this reference, and the call stays open."}
                   fullWidth
                 >
                   <MenuItem value="" sx={{ display: "none" }} />
@@ -318,36 +280,6 @@ export default function CallDialog({
                 </Box>
               </Stack>
             </Box>
-            {canEscalate ? (
-              <Box aria-hidden={tab !== "escalate"} sx={tabPanel(tab === "escalate")}>
-                <Stack spacing={1.5}>
-                  <NoteField notes={notes} notesError={notesError} onNotes={onNotes} />
-                  <TextField
-                    select
-                    label="Admin"
-                    value={adminId}
-                    onChange={(event) => {
-                      setAdminId(event.target.value);
-                      setAdminError(null);
-                    }}
-                    error={adminError !== null}
-                    helperText={adminError ?? undefined}
-                    fullWidth
-                  >
-                    <MenuItem value="" sx={{ display: "none" }} />
-                    {admins.map((admin) => (
-                      <MenuItem key={admin.id} value={admin.id}>{admin.displayName}</MenuItem>
-                    ))}
-                  </TextField>
-                  {tab === "escalate" && dialogError ? <Alert severity="error">{dialogError}</Alert> : null}
-                  <Box sx={{ display: "flex" }}>
-                    <Button variant="outlined" onClick={submitEscalate} disabled={pending !== null} sx={footerButton}>
-                      {pending === "escalate" ? "Saving…" : "Escalate"}
-                    </Button>
-                  </Box>
-                </Stack>
-              </Box>
-            ) : null}
             <Box aria-hidden={tab !== "callback"} sx={tabPanel(tab === "callback")}>
               <Stack spacing={1.5}>
                 <NoteField notes={notes} notesError={notesError} onNotes={onNotes} />

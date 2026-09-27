@@ -1,11 +1,8 @@
-export function destinationAfterCallEnds(pathname: string): "/customers" | "/calls" | null {
-  const path = pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
-  if (/^\/customers\/[^/]+/.test(path)) return "/customers";
-  if (path === "/calls" || path.startsWith("/calls/")) return null;
-  return "/calls";
-}
+const referencePattern = /^C-\d{5}$/;
 
-export function routeAfterCallAction(pathname: string, status: string | undefined): "/customers" | "/calls" | null {
+export function routeAfterCallAction(status: string | undefined, reference: string): `/calls/${string}` | "/calls" | null {
   if (status === undefined || status === "OPEN") return null;
-  return destinationAfterCallEnds(pathname);
+  const normalized = reference.trim().toUpperCase();
+  if (!referencePattern.test(normalized)) return "/calls";
+  return `/calls/${normalized}`;
 }

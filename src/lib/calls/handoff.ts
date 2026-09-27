@@ -11,3 +11,7 @@ export function handoffAllowed(input: { actorId: string; targetId: string; targe
   }
   return { ok: true as const };
 }
+
+export function handoffPatch(targetId: string) {
+  return { csrId: targetId };
+}

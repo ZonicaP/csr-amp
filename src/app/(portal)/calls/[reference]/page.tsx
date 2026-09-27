@@ -38,7 +38,6 @@ export default async function CallPage({ params }: { params: Promise<{ reference
           <Typography component="h1" variant="h1">{call.reference}</Typography>
           <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
             <Chip size="small" label={chip.label} sx={{ fontWeight: 600, color: chip.color, backgroundColor: chip.backgroundColor }} />
-            {call.escalated ? <Chip size="small" label="Escalated" sx={{ fontWeight: 600, color: "#003264", backgroundColor: "#E7F0FA" }} /> : null}
           </Stack>
         </Stack>
         {call.customer ? (
@@ -49,8 +48,7 @@ export default async function CallPage({ params }: { params: Promise<{ reference
           </Typography>
         ) : null}
         <Typography>
-          {call.escalated ? `Escalated to ${call.agent}` : call.agent}
-          {call.escalated && call.escalatedBy ? ` by ${call.escalatedBy}` : ""}
+          {call.agent}
           {" · "}Started {when.format(call.startedAt)}{call.endedAt ? ` · Ended ${when.format(call.endedAt)}` : ""}
         </Typography>
         {call.status === "CALLBACK" ? <MarkCalled reference={call.reference} /> : null}

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { endCall, escalateCall, handoffCall, linkCaller, requestCallback, unlinkCaller } from "@/lib/calls/call-service";
+import { endCall, handoffCall, linkCaller, requestCallback, unlinkCaller } from "@/lib/calls/call-service";
 import { csrErrorResponse } from "@/lib/csr/http";
 import { withApi } from "@/lib/http/with-api";
 import { readSession } from "@/lib/csr/session";
@@ -23,14 +23,6 @@ export const POST = withApi(async function POST(request: Request) {
     }
     if (body.action === "handoff") {
       const call = await handoffCall(session.csrId, typeof body.csrId === "string" ? body.csrId : "");
-      return NextResponse.json({ call });
-    }
-    if (body.action === "escalate") {
-      const call = await escalateCall(
-        session.csrId,
-        typeof body.adminId === "string" ? body.adminId : "",
-        typeof body.note === "string" ? body.note : "",
-      );
       return NextResponse.json({ call });
     }
     if (body.action === "link") {

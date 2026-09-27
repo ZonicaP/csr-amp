@@ -1,10 +1,10 @@
 import { Prisma, type CustomerEventType } from "@prisma/client";
 import { callListWhere } from "@/lib/calls/call-search";
 import { closingCall } from "@/lib/calls/closing";
-import { handoffAllowed } from "@/lib/calls/handoff";
+import { handoffAllowed, handoffPatch } from "@/lib/calls/handoff";
 import { randomCallReference } from "@/lib/calls/reference";
 import { currentCsr, CsrError } from "@/lib/csr/csr-service";
-import { canEscalateCall, hasPermission } from "@/lib/csr/permissions";
+import { hasPermission } from "@/lib/csr/permissions";
 import { prisma } from "@/lib/prisma";
 
 const noteLimit = 1000;
@@ -149,47 +149,6 @@ export async function requestCallback(actorId: string, note: string) {
   return { reference: call.reference, status: "CALLBACK" as const };
 }
 
-export async function listEscalationAdmins(actorId: string) {
-  const actor = await currentCsr(actorId);
-  if (!canEscalateCall(actor.roles)) throw new CsrError("FORBIDDEN", "Only an agent can escalate a call");
-  return prisma.csr.findMany({
-    where: { status: "ACTIVE", roles: { some: { role: "ADMIN" } } },
-    select: { id: true, displayName: true },
-    orderBy: { displayName: "asc" },
-  });
-}
-
-export async function escalateCall(actorId: string, adminId: string, note: string) {
-  const actor = await currentCsr(actorId);
-  if (!canEscalateCall(actor.roles)) throw new CsrError("FORBIDDEN", "Only an agent can escalate a call");
-  const callbackNote = requiredNote(note, "Add a note before escalating the call");
-  const call = await prisma.call.findFirst({ where: { csrId: actorId, status: "OPEN" }, select: { id: true, reference: true } });
-  if (!call) throw new CsrError("NOT_FOUND", "There is no open call");
-  const admin = await prisma.csr.findFirst({
-    where: { id: adminId, status: "ACTIVE", roles: { some: { role: "ADMIN" } } },
-    select: { id: true },
-  });
-  if (!admin) {
-    const available = await prisma.csr.count({ where: { status: "ACTIVE", roles: { some: { role: "ADMIN" } } } });
-    if (available === 0) throw new CsrError("CONFLICT", "No admin is available");
-    throw new CsrError("INVALID", "Choose an active admin");
-  }
-  const endedAt = new Date();
-  const updated = await prisma.call.updateMany({
-    where: { id: call.id, csrId: actorId, status: "OPEN" },
-    data: {
-      status: "CALLBACK",
-      endedAt,
-      callbackNote,
-      csrId: admin.id,
-      escalatedAt: endedAt,
-      escalatedFromCsrId: actorId,
-    },
-  });
-  if (updated.count !== 1) throw new CsrError("CONFLICT", "That call is no longer open");
-  return { reference: call.reference, status: "CALLBACK" as const };
-}
-
 export async function listHandoffCsrs(actorId: string) {
   await currentCsr(actorId);
   const csrs = await prisma.csr.findMany({
@@ -221,7 +180,7 @@ export async function handoffCall(actorId: string, targetId: string) {
   try {
     const updated = await prisma.call.updateMany({
       where: { id: call.id, csrId: actorId, status: "OPEN" },
-      data: { csrId: targetId },
+      data: handoffPatch(targetId),
     });
     if (updated.count !== 1) throw new CsrError("CONFLICT", "That call is no longer open");
   } catch (error) {
@@ -249,7 +208,6 @@ export async function searchCalls(actorId: string, query: string, options?: { ca
       endedAt: true,
       closingNotes: true,
       callbackNote: true,
-      escalatedAt: true,
       csr: { select: { displayName: true } },
     },
   });
@@ -261,7 +219,6 @@ export async function searchCalls(actorId: string, query: string, options?: { ca
     endedAt: call.endedAt,
     closingNotes: call.closingNotes,
     callbackNote: call.callbackNote,
-    escalated: call.escalatedAt !== null,
     agent: call.csr.displayName,
     customers: customers.get(call.id) ?? [],
   }));
@@ -307,9 +264,7 @@ export async function getCall(actorId: string, reference: string) {
       closingNotes: true,
       callbackNote: true,
       resolvedAt: true,
-      escalatedAt: true,
       csr: { select: { displayName: true } },
-      escalatedFrom: { select: { displayName: true } },
       user: { select: { membershipId: true, firstName: true, lastName: true } },
       events: { orderBy: { createdAt: "asc" }, select: eventSelect },
     },
@@ -323,9 +278,7 @@ export async function getCall(actorId: string, reference: string) {
     closingNotes: call.closingNotes,
     callbackNote: call.callbackNote,
     resolvedAt: call.resolvedAt,
-    escalated: call.escalatedAt !== null,
     agent: call.csr.displayName,
-    escalatedBy: call.escalatedFrom?.displayName ?? null,
     customer: call.user,
     events: call.events,
   };
@@ -373,7 +326,6 @@ export async function callContextForCustomer(actorId: string, membershipId: stri
       endedAt: true,
       closingNotes: true,
       callbackNote: true,
-      escalatedAt: true,
       csr: { select: { displayName: true } },
     },
   });

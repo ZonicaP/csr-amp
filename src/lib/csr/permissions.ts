@@ -42,7 +42,3 @@ export function permissionsForRoles(roles: readonly CsrRoleName[]): Set<Permissi
 export function hasPermission(roles: readonly CsrRoleName[], permission: Permission): boolean {
   return permissionsForRoles(roles).has(permission);
 }
-
-export function canEscalateCall(roles: readonly CsrRoleName[]): boolean {
-  return roles.includes("AGENT") && !roles.includes("ADMIN");
-}

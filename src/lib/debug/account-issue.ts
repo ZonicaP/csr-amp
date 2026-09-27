@@ -28,7 +28,6 @@ export type AccountCall = {
   agent: string;
   closingNotes: string | null;
   callbackNote: string | null;
-  escalated: boolean;
 };
 
 export type AccountSnapshot = {
@@ -69,7 +68,6 @@ export type CallContext = {
   endedAt: Date | null;
   closingNotes: string | null;
   callbackNote: string | null;
-  escalatedAt: Date | null;
   csr: { displayName: string };
 };
 
@@ -125,7 +123,6 @@ export function accountSnapshot(customer: AccountRecord, calls: CallContext[] = 
       agent: call.csr.displayName,
       closingNotes: savedNote(call.closingNotes),
       callbackNote: savedNote(call.callbackNote),
-      escalated: call.escalatedAt !== null,
     })),
   };
 }
@@ -465,10 +462,9 @@ function describeCall(call: AccountCall) {
     call.callbackNote ? `Callback note: ${call.callbackNote}` : "",
     call.closingNotes ? `Closing note: ${call.closingNotes}` : "",
   ].filter(Boolean);
-  const escalated = call.escalated ? " It was escalated." : "";
   const ended = call.ended ? `, ended ${call.ended}` : "";
   const saved = notes.length > 0 ? ` ${notes.join(" ")}` : " No note was saved on that call.";
-  return `${call.reference} is ${call.status.toLowerCase()}, handled by ${call.agent}, started ${call.started}${ended}.${escalated}${saved}`;
+  return `${call.reference} is ${call.status.toLowerCase()}, handled by ${call.agent}, started ${call.started}${ended}.${saved}`;
 }
 
 function callAnswer(account: AccountSnapshot, question: string): DebugReply {

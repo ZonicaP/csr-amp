@@ -22,15 +22,11 @@ import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { customersCacheKey, useCustomersStore, type CustomersPage } from "@/lib/users/customers-store";
 import { customerMatchesQuery, phoneDigits, searchTokens, type UserListItem } from "@/lib/users/user-list";
 
-function OnCallMark({ call }: { call: UserListItem["onCall"] }) {
-  if (!call) return null;
+function OnCallLabel({ agent }: { agent: string }) {
   return (
-    <Box
-      component="span"
-      sx={{ display: "inline-flex", ml: 1, px: 1, py: "2px", borderRadius: 999, backgroundColor: "#E7F0FA", color: "#003264", fontSize: 12, fontWeight: 700, whiteSpace: "nowrap", verticalAlign: "middle" }}
-    >
-      On a call · {call.agent}
-    </Box>
+    <Typography component="span" sx={{ display: "block", mt: 0.25, mb: 0.5, color: "#003264", fontSize: 12, fontWeight: 600, lineHeight: 1.35 }}>
+      On a call · {agent}
+    </Typography>
   );
 }
 
@@ -196,11 +192,20 @@ export default function UsersTable() {
                       openCustomer(user.membershipId);
                     }
                   }}
-                  sx={{ cursor: "pointer" }}
+                  sx={{
+                    cursor: "pointer",
+                    ...(user.onCall
+                      ? {
+                          backgroundColor: "#F5FAFF",
+                          boxShadow: "inset 3px 0 0 #0B75E1",
+                          "&:hover": { backgroundColor: "#E7F0FA" },
+                        }
+                      : null),
+                  }}
                 >
                   <TableCell>
                     <HighlightMatch text={user.firstName} query={debounced} /> <HighlightMatch text={user.lastName} query={debounced} />
-                    <OnCallMark call={user.onCall} />
+                    {user.onCall ? <OnCallLabel agent={user.onCall.agent} /> : null}
                   </TableCell>
                   <TableCell>
                     <HighlightMatch text={user.membershipId} query={debounced} />
@@ -238,12 +243,24 @@ export default function UsersTable() {
                 openCustomer(user.membershipId);
               }
             }}
-            sx={{ px: 1.5, py: 1.25, border: "1px solid #E5E7EB", borderRadius: 3, cursor: "pointer" }}
+            sx={{
+              px: 1.5,
+              py: 1.25,
+              borderRadius: 3,
+              cursor: "pointer",
+              ...(user.onCall
+                ? {
+                    border: "1px solid #0B75E1",
+                    backgroundColor: "#F5FAFF",
+                    boxShadow: "0 1px 8px rgba(11, 117, 225, 0.16)",
+                  }
+                : { border: "1px solid #E5E7EB" }),
+            }}
           >
+            {user.onCall ? <OnCallLabel agent={user.onCall.agent} /> : null}
             <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1, alignItems: "center" }}>
               <Typography sx={{ color: "#003264", fontWeight: 600, minWidth: 0 }}>
                 <HighlightMatch text={user.firstName} query={debounced} /> <HighlightMatch text={user.lastName} query={debounced} />
-                <OnCallMark call={user.onCall} />
               </Typography>
               <StatusBadge status={user.status} />
             </Stack>

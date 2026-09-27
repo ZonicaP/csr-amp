@@ -11,16 +11,15 @@ import Typography from "@mui/material/Typography";
 import CallDialog from "@/components/calls/CallDialog";
 import { AuthRequestError, postJson } from "@/lib/auth/http-client";
 import type { OpenCall } from "@/lib/calls/call-service";
+import { clearCallStarting, markCallStarting, writeStartedCall } from "@/lib/calls/transfer-notice";
 
 const compactButton = { "&&": { minHeight: 36, py: "6px", px: 2, fontSize: 14 } };
 
 export default function CallControls({
   call,
-  canEscalate = false,
   align = "end",
 }: {
   call: OpenCall | null;
-  canEscalate?: boolean;
   align?: "start" | "end";
 }) {
   const router = useRouter();
@@ -31,8 +30,10 @@ export default function CallControls({
   async function start() {
     setPending(true);
     setError(null);
+    markCallStarting(window.localStorage);
     try {
-      await postJson("/api/calls", {});
+      const started = await postJson<{ call: { reference: string } }>("/api/calls", {});
+      writeStartedCall(window.localStorage, started.call.reference);
       if (!/^\/customers\/[^/]+/.test(window.location.pathname)) {
         router.push("/customers");
       }
@@ -40,6 +41,7 @@ export default function CallControls({
     } catch (caught) {
       setError(caught instanceof AuthRequestError ? caught.message : "That call could not be started");
     } finally {
+      clearCallStarting(window.localStorage);
       setPending(false);
     }
   }
@@ -89,7 +91,7 @@ export default function CallControls({
         </Alert>
       </Snackbar>
       {call ? (
-        <CallDialog open={infoOpen} reference={call.reference} canEscalate={canEscalate} onClose={() => setInfoOpen(false)} />
+        <CallDialog open={infoOpen} reference={call.reference} onClose={() => setInfoOpen(false)} />
       ) : null}
     </Box>
   );
