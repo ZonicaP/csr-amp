@@ -49,10 +49,10 @@ export default async function ProfilePage() {
               </Stack>
               <Typography>{csr.email}</Typography>
             </Stack>
-            <ProfileNameForm id={csr.id} name={csr.name} surname={csr.surname} />
-            <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+            <Stack direction="row" spacing={1} sx={{ justifyContent: "flex-end", alignItems: "center" }}>
+              <ProfileNameForm id={csr.id} name={csr.name} surname={csr.surname} />
               <SignOutButton />
-            </Box>
+            </Stack>
           </Stack>
         </Paper>
       </Stack>
