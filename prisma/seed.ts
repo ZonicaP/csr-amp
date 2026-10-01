@@ -84,6 +84,9 @@ async function seedCustomers() {
     const declineReason = declineReasons[Math.floor(index / 3) % declineReasons.length];
     const payments = [new Date(Date.UTC(2024, 5, 12, 16)), renewedAt];
     if (customer.status === AccountStatus.ACTIVE) payments.push(latestAt);
+    // A second charge one day later so a refund can be requested: Ava Nguyen AMP-10001, Noah Nguyen AMP-10007, Mia Nguyen AMP-10013, Sofia Nguyen AMP-10025.
+    const duplicateAt = new Date(latestAt.getTime() + 24 * 60 * 60 * 1000);
+    const showRefund = [0, 6, 12, 24].includes(index) && customer.status === AccountStatus.ACTIVE;
     let vehicleName = "";
     let plan = plans[index % plans.length];
     let price = "";
@@ -123,6 +126,9 @@ async function seedCustomers() {
           ...(customer.status === AccountStatus.OVERDUE && slot === 0
             ? [{ userId: customer.id, vehicleId: vehicle.id, description: plan, amount, failureReason: declineReason, purchasedAt: latestAt }]
             : []),
+          ...(showRefund && slot === 0
+            ? [{ userId: customer.id, vehicleId: vehicle.id, description: plan, amount, purchasedAt: duplicateAt }]
+            : []),
         ],
       });
     }
@@ -134,6 +140,9 @@ async function seedCustomers() {
         summary: `Payment of ${price} received for ${plan}`,
         createdAt,
       })),
+      ...(showRefund
+        ? [{ type: "PAYMENT_RECEIVED" as const, summary: `Payment of ${price} received for ${plan}`, createdAt: duplicateAt }]
+        : []),
     ];
     if (customer.status === AccountStatus.OVERDUE) {
       events.push(
